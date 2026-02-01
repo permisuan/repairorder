@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <title>Tech Dashboard</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            ::-webkit-scrollbar {
+                width: 0px;
+                background: transparent;
+            }
+            /* Add active state for touch feedback */
+            .job-card:active {
+                transform: scale(0.98);
+                background-color: #1f2937; /* gray-800 */
+            }
+        </style>
+    </head>
+    <body
+        class="bg-gray-950 text-gray-100 min-h-screen flex flex-col pb-20"
+        onclick="closeMenu(event)"
+    >
+        <div
+            id="activeTimerBar"
+            class="hidden fixed top-0 left-0 right-0 bg-emerald-700 text-white z-50 p-3 shadow-xl border-b border-emerald-500"
+        >
+            <div class="max-w-md mx-auto flex justify-between items-center">
+                <div>
+                    <div
+                        class="text-[10px] font-bold uppercase opacity-75 flex items-center gap-2"
+                    >
+                        <span
+                            class="w-2 h-2 bg-white rounded-full animate-pulse"
+                        ></span>
+                        Clocked On
+                    </div>
+                    <div
+                        class="font-bold text-sm leading-tight mt-1"
+                        id="timerTitle"
+                    >
+                        ...
+                    </div>
+                    <div class="text-xs font-mono opacity-80" id="timerRO">
+                        ...
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-black font-mono" id="timerClock">
+                        0.00
+                    </div>
+                    <button
+                        onclick="clockOff()"
+                        class="bg-black/20 hover:bg-black/40 text-white text-[10px] font-bold uppercase px-3 py-1 rounded border border-white/20 mt-1"
+                    >
+                        Stop Clock
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <header
+            class="bg-gray-900 border-b border-gray-800 p-4 sticky top-0 z-40 transition-all shadow-lg"
+            id="mainHeader"
+        >
+            <div class="max-w-md mx-auto flex justify-between items-center">
+                <h1 class="text-xl font-black italic text-emerald-500">
+                    TECH<span class="text-white">VIEW</span>
+                </h1>
+                <div class="flex items-center space-x-3">
+                    <span
+                        class="text-[10px] font-mono text-gray-500 uppercase bg-gray-800 px-2 py-1 rounded border border-gray-700"
+                        >{{ user.username }}</span
+                    >
+                    <div class="relative">
+                        <button
+                            onclick="toggleMenu(event)"
+                            class="bg-gray-800 text-gray-400 p-2 rounded border border-gray-700 hover:text-white hover:border-gray-500 transition"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 6h16M4 12h16M4 18h16"
+                                />
+                            </svg>
+                        </button>
+                        <div
+                            id="navMenu"
+                            class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 overflow-hidden z-50"
+                        >
+                            <div class="py-1">
+                                <a
+                                    href="/customers"
+                                    class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50"
+                                    >🏢 Customers</a
+                                >
+                                <a
+                                    href="/shop-management"
+                                    class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50"
+                                    >⚙️ Shop Info</a
+                                >
+                                <a
+                                    href="/logout"
+                                    class="block px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 font-bold"
+                                    >🚪 Log Out</a
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow p-4 max-w-md mx-auto w-full space-y-8 mt-2">
+            <section>
+                <h3
+                    class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 ml-1"
+                >
+                    My Assigned Jobs
+                </h3>
+                {% if my_jobs %}
+                <div class="space-y-6">
+                    {% for job in my_jobs %}
+                    <div
+                        class="job-card bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden shadow-2xl relative transition-all"
+                        onclick="window.location.href='/ro/{{ job.id }}'"
+                    >
+                        <div class="absolute top-0 right-0 flex">
+                            {% if job.status == 'Work in Progress' %}
+                            <div
+                                class="bg-yellow-900/80 text-yellow-400 text-[10px] font-bold px-3 py-1 border-l border-b border-yellow-500/20 animate-pulse rounded-bl-xl"
+                            >
+                                IN PROGRESS
+                            </div>
+                            {% elif job.status == 'Complete' %}
+                            <div
+                                class="bg-green-900/80 text-green-400 text-[10px] font-bold px-3 py-1 border-l border-b border-green-500/20 rounded-bl-xl"
+                            >
+                                COMPLETE
+                            </div>
+                            {% else %}
+                            <div
+                                class="bg-blue-900/50 text-blue-400 text-[10px] font-bold px-3 py-1 border-l border-b border-blue-500/20 rounded-bl-xl"
+                            >
+                                OPEN
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <div
+                                    class="text-[10px] text-gray-500 font-mono mb-1"
+                                >
+                                    RO #{{ job.ro_number }}
+                                </div>
+                                <h2
+                                    class="text-2xl font-bold text-white leading-none"
+                                >
+                                    {{ job.unit_number }}
+                                </h2>
+                                <div class="text-sm text-gray-400 mt-1">
+                                    {{ job.year }} {{ job.make }} {{ job.model
+                                    }}
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div
+                                    class="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex justify-between items-end"
+                                >
+                                    <span>Tasks</span>
+                                    <span
+                                        class="text-emerald-500 text-[9px] cursor-pointer hover:underline"
+                                        >View Details &rarr;</span
+                                    >
+                                </div>
+                                {% if job.lines %} {% for line in job.lines %}
+                                <div
+                                    class="bg-black/30 p-3 rounded-lg border border-gray-800/50 flex justify-between items-center hover:border-gray-700 transition"
+                                    onclick="event.stopPropagation()"
+                                >
+                                    <div
+                                        class="pr-2 w-full"
+                                        onclick="window.location.href='/ro/{{ job.id }}'"
+                                    >
+                                        <div
+                                            class="font-bold text-gray-300 text-sm"
+                                        >
+                                            {{ line.title }}
+                                        </div>
+                                        {% if line.notes %}
+                                        <div
+                                            class="text-xs text-gray-500 mt-1 italic truncate"
+                                        >
+                                            {{ line.notes }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <button
+                                        onclick="clockOnLine(this, {{ line.id }}, {{ job.id }})"
+                                        class="bg-gray-800 hover:bg-emerald-600 hover:text-white text-gray-400 border border-gray-700 p-2 rounded-lg transition-colors flex-shrink-0"
+                                    >
+                                        ⏱️
+                                    </button>
+                                </div>
+                                {% endfor %} {% else %}
+                                <div class="text-gray-500 italic text-xs">
+                                    No tasks listed.
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div
+                    class="text-center py-8 border-2 border-dashed border-gray-800 rounded-2xl bg-gray-900/20"
+                >
+                    <p class="text-gray-500 text-sm font-bold">
+                        No jobs assigned.
+                    </p>
+                    <p class="text-xs text-gray-600 mt-1">
+                        Check the pool below.
+                    </p>
+                </div>
+                {% endif %}
+            </section>
+
+            <section>
+                <div class="flex justify-between items-end mb-3 ml-1">
+                    <h3
+                        class="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                    >
+                        Unassigned Pool
+                    </h3>
+                    <input
+                        type="text"
+                        id="poolSearch"
+                        onkeyup="filterPool()"
+                        placeholder="Filter..."
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white w-24 focus:w-32 focus:border-emerald-500 transition-all outline-none"
+                    />
+                </div>
+                {% if unassigned_jobs %}
+                <div class="space-y-3" id="poolList">
+                    {% for job in unassigned_jobs %}
+                    <div
+                        class="pool-item bg-gray-900/50 p-4 rounded-xl border border-gray-800 flex flex-col space-y-3"
+                    >
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="text-white font-bold text-lg">
+                                    {{ job.unit_number }}
+                                    <span
+                                        class="text-gray-500 text-xs font-normal"
+                                        >({{ job.make }})</span
+                                    >
+                                </div>
+                                <div
+                                    class="text-[10px] text-blue-400 font-mono"
+                                >
+                                    RO #{{ job.ro_number }}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-400">
+                                    {{ job.customer_name }}
+                                </div>
+                            </div>
+                        </div>
+                        {% if job.lines %}
+                        <button
+                            onclick="clockOnLine(this, {{ job.lines[0].id }}, {{ job.id }})"
+                            class="w-full bg-gray-800 hover:bg-emerald-900/50 hover:text-emerald-400 text-gray-400 border border-gray-700 py-2 rounded-lg font-bold text-xs uppercase transition-colors"
+                        >
+                            Grab & Clock On
+                        </button>
+                        {% else %}
+                        <div
+                            class="text-red-500 text-xs italic text-center py-2 border border-gray-800 rounded bg-gray-950/50"
+                        >
+                            Cannot grab (No tasks)
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div
+                    class="text-center py-6 border-2 border-dashed border-gray-800 rounded-2xl bg-gray-900/20"
+                >
+                    <p class="text-gray-600 text-sm">Pool is empty.</p>
+                </div>
+                {% endif %}
+            </section>
+        </main>
+
+        <script>
+            let checkInterval = setInterval(checkTimer, 5000);
+            checkTimer();
+            async function checkTimer() {
+                try {
+                    const res = await fetch("/api/active-timer");
+                    const data = await res.json();
+                    const bar = document.getElementById("activeTimerBar");
+                    const header = document.getElementById("mainHeader");
+                    if (data.active) {
+                        bar.classList.remove("hidden");
+                        header.classList.add("mt-20");
+                        document.getElementById("timerTitle").innerText =
+                            data.title;
+                        document.getElementById("timerRO").innerText =
+                            "RO #" + data.ro;
+                        document.getElementById("timerClock").innerText =
+                            data.hours.toFixed(2);
+                    } else {
+                        bar.classList.add("hidden");
+                        header.classList.remove("mt-20");
+                    }
+                } catch (e) {}
+            }
+            async function clockOnLine(btn, lineId, roId) {
+                btn.disabled = true;
+                btn.innerText = "...";
+                try {
+                    const r = await fetch(
+                        `/clock-on-line/${lineId}?ro_id=${roId}`,
+                        { method: "POST" },
+                    );
+                    if (r.ok) window.location.reload();
+                } catch (e) {
+                    alert("Error");
+                    btn.disabled = false;
+                }
+            }
+            async function clockOff() {
+                if (!confirm("Stop the clock?")) return;
+                await fetch("/clock-off", { method: "POST" });
+                window.location.reload();
+            }
+            function filterPool() {
+                let input = document
+                    .getElementById("poolSearch")
+                    .value.toUpperCase();
+                let items = document.getElementsByClassName("pool-item");
+                for (let i = 0; i < items.length; i++) {
+                    items[i].style.display =
+                        items[i].innerText.toUpperCase().indexOf(input) > -1
+                            ? ""
+                            : "none";
+                }
+            }
+            function toggleMenu(event) {
+                event.stopPropagation();
+                document.getElementById("navMenu").classList.toggle("hidden");
+            }
+            function closeMenu(event) {
+                document.getElementById("navMenu").classList.add("hidden");
+            }
+        </script>
+    </body>
+</html>

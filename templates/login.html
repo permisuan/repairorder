@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <title>Login - RepairOrder Pro</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body
+        class="bg-gray-950 text-gray-100 h-screen flex items-center justify-center p-4"
+    >
+        <div
+            class="w-full max-w-sm bg-gray-900 p-8 rounded-2xl border border-gray-800 shadow-2xl"
+        >
+            <h1
+                class="text-3xl font-black text-center text-blue-500 italic mb-8"
+            >
+                REPAIR<span class="text-white">ORDER</span>
+            </h1>
+            <form action="/login" method="post" class="space-y-6">
+                <div>
+                    <label
+                        class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2"
+                        >Username</label
+                    >
+                    <input
+                        type="text"
+                        name="username"
+                        required
+                        autofocus
+                        autocomplete="off"
+                        class="w-full p-4 bg-gray-800 rounded-xl border border-gray-700 focus:border-blue-500 outline-none transition-colors"
+                    />
+                </div>
+                <div>
+                    <label
+                        class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2"
+                        >Password</label
+                    >
+                    <input
+                        type="password"
+                        name="password"
+                        required
+                        class="w-full p-4 bg-gray-800 rounded-xl border border-gray-700 focus:border-blue-500 outline-none transition-colors"
+                    />
+                </div>
+                <button
+                    type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase p-4 rounded-xl shadow-lg transition-transform active:scale-95"
+                >
+                    Login
+                </button>
+            </form>
+            {% if error %}
+            <p class="text-red-500 text-center mt-4 text-sm font-bold">
+                {{ error }}
+            </p>
+            {% endif %}
+        </div>
+    </body>
+</html>

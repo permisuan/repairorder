@@ -1,0 +1,889 @@
+import datetime
+import hashlib
+import json
+
+import httpx
+from fastapi import FastAPI, Form, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+
+import database as db
+
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+
+
+# --- GLOBAL FIX: JSON Date Serializer for Templates ---
+# This tells Jinja2 (the template engine) how to handle 'date' objects
+# automatically whenever you use |tojson
+def custom_json_serializer(obj):
+    if isinstance(obj, (datetime.date, datetime.datetime)):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def custom_dumps(obj, **kwargs):
+    return json.dumps(obj, default=custom_json_serializer, **kwargs)
+
+
+templates.env.policies["json.dumps_function"] = custom_dumps
+# ------------------------------------------------------
+
+
+# --- AUTH & HELPERS ---
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def get_current_user(request: Request):
+    token = request.cookies.get("session_token")
+    if not token:
+        return None
+    try:
+        username, role = token.split(":")
+        return {"username": username, "role": role}
+    except:
+        return None
+
+
+def clean_int(val):
+    if not val or val == "":
+        return None
+    try:
+        return int(val)
+    except:
+        return None
+
+
+def clean_float(val):
+    if not val or val == "":
+        return 0.0
+    try:
+        return float(val)
+    except:
+        return 0.0
+
+
+def generate_employee_number(role, cur):
+    if role == "tech":
+        start, end = 1001, 1999
+    elif role == "manager":
+        start, end = 2001, 2999
+    elif role == "admin":
+        start, end = 3001, 3999
+    else:
+        start, end = 9000, 9999
+
+    cur.execute(
+        "SELECT MAX(employee_number) FROM users WHERE employee_number BETWEEN %s AND %s",
+        (start, end),
+    )
+    highest = cur.fetchone()[0]
+
+    if highest:
+        return highest + 1
+    else:
+        return start
+
+
+def calculate_tenure(hire_date):
+    if not hire_date:
+        return "0.00"
+    try:
+        days = (datetime.date.today() - hire_date).days
+        years = days / 365.25
+        return f"{years:.2f}"
+    except:
+        return "0.00"
+
+
+# --- API ROUTES (VEHICLE & TIMER) ---
+@app.get("/api/decode/{vin}")
+async def decode_vin_api(vin: str):
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/{vin}?format=json"
+            )
+            data = resp.json()
+        res_map = {
+            item["Variable"]: item["Value"] for item in data["Results"] if item["Value"]
+        }
+        mfg = res_map.get("Engine Manufacturer", "") or res_map.get("Make", "")
+        disp = res_map.get("Displacement (L)", "")
+        config = res_map.get("Engine Configuration", "")
+        return {
+            "year": res_map.get("Model Year", ""),
+            "make": res_map.get("Make", ""),
+            "model": res_map.get("Model", ""),
+            "engine": f"{mfg} {disp}L {config}".strip(),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/search-vehicle")
+async def search_vehicle_api(vin: str = None, unit: str = None, cust: int = None):
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+    if vin:
+        cur.execute("SELECT * FROM vehicles WHERE RIGHT(vin, 8) = %s", (vin,))
+    elif unit and cust:
+        cur.execute(
+            "SELECT * FROM vehicles WHERE unit_number = %s AND customer_id = %s",
+            (unit, cust),
+        )
+    else:
+        return {"found": False}
+    vehicle = cur.fetchone()
+    conn.close()
+    if vehicle:
+        return {"found": True, "vehicle": vehicle}
+    return {"found": False}
+
+
+@app.get("/api/active-timer")
+async def get_active_timer(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"active": False}
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+    cur.execute(
+        """
+        SELECT l.start_time, j.id as line_id, j.title, r.ro_number
+        FROM labor_lines l
+        JOIN job_lines j ON l.job_line_id = j.id
+        JOIN repair_orders r ON j.ro_id = r.id
+        WHERE l.tech_id = %s AND l.end_time IS NULL
+    """,
+        (user["username"],),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if row:
+        now = datetime.datetime.now()
+        start = row["start_time"]
+        diff = (now - start).total_seconds()
+        hours = diff / 3600.0
+        return {
+            "active": True,
+            "line_id": row["line_id"],
+            "ro": row["ro_number"],
+            "title": row["title"],
+            "hours": round(hours, 2),
+        }
+    return {"active": False}
+
+
+# --- DASHBOARD ROUTES (UPDATED FOR TABS) ---
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/login")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+
+    if user["role"] in ["admin", "manager"]:
+        # 1. Fetch Techs for assignment dropdown
+        cur.execute(
+            "SELECT id, username FROM users WHERE role='tech' AND is_active=TRUE ORDER BY username"
+        )
+        techs = cur.fetchall()
+
+        # 2. Fetch ACTIVE ROs (Open, Work in Progress, Complete)
+        cur.execute("""
+            SELECT ro.id, ro.ro_number, ro.status, ro.created_at,
+                   v.unit_number, v.make, v.model, v.vin,
+                   c.name as customer_name,
+                   u.username as tech_name, u.id as tech_id
+            FROM repair_orders ro
+            JOIN vehicles v ON ro.vehicle_id = v.id
+            JOIN customers c ON v.customer_id = c.id
+            LEFT JOIN users u ON ro.assigned_tech_id = u.id
+            WHERE ro.status != 'Closed'
+            ORDER BY ro.ro_number DESC
+        """)
+        active_ros = cur.fetchall()
+
+        # 3. Fetch ARCHIVED ROs (Closed/Billed)
+        cur.execute("""
+            SELECT ro.id, ro.ro_number, ro.status, ro.completed_at,
+                   v.unit_number, v.make, v.model, v.vin,
+                   c.name as customer_name,
+                   u.username as tech_name
+            FROM repair_orders ro
+            JOIN vehicles v ON ro.vehicle_id = v.id
+            JOIN customers c ON v.customer_id = c.id
+            LEFT JOIN users u ON ro.assigned_tech_id = u.id
+            WHERE ro.status = 'Closed'
+            ORDER BY ro.completed_at DESC LIMIT 200
+        """)
+        archived_ros = cur.fetchall()
+
+        conn.close()
+        return templates.TemplateResponse(
+            "foreman_dash.html",
+            {
+                "request": request,
+                "user": user,
+                "active_ros": active_ros,
+                "archived_ros": archived_ros,
+                "techs": techs,
+            },
+        )
+    else:
+        # Tech View
+        cur.execute(
+            """
+            SELECT ro.id, ro.ro_number, ro.vehicle_id, ro.status,
+                   v.vin, v.unit_number, v.year, v.make, v.model,
+                   v.engine_type, v.license_plate, v.mileage, v.engine_hours,
+                   c.name as customer_name
+            FROM repair_orders ro
+            JOIN vehicles v ON ro.vehicle_id = v.id
+            JOIN customers c ON v.customer_id = c.id
+            JOIN users u ON ro.assigned_tech_id = u.id
+            WHERE u.username = %s AND ro.status != 'Closed'
+        """,
+            (user["username"],),
+        )
+        my_jobs = cur.fetchall()
+        for job in my_jobs:
+            cur.execute(
+                "SELECT id, title, notes FROM job_lines WHERE ro_id = %s ORDER BY id ASC",
+                (job["id"],),
+            )
+            job["lines"] = cur.fetchall()
+        cur.execute("""
+            SELECT ro.id, ro.ro_number, ro.vehicle_id, ro.status,
+                   v.unit_number, v.make, v.model, c.name as customer_name
+            FROM repair_orders ro
+            JOIN vehicles v ON ro.vehicle_id = v.id
+            JOIN customers c ON v.customer_id = c.id
+            WHERE ro.assigned_tech_id IS NULL AND ro.status != 'Closed'
+        """)
+        unassigned_jobs = cur.fetchall()
+        for job in unassigned_jobs:
+            cur.execute(
+                "SELECT title FROM job_lines WHERE ro_id = %s ORDER BY id ASC",
+                (job["id"],),
+            )
+            job["lines"] = cur.fetchall()
+        conn.close()
+        return templates.TemplateResponse(
+            "tech_dash.html",
+            {
+                "request": request,
+                "user": user,
+                "my_jobs": my_jobs,
+                "unassigned_jobs": unassigned_jobs,
+            },
+        )
+
+
+# --- NEW API ROUTES (EDITING & ASSIGNMENT) ---
+
+
+@app.post("/api/assign-tech")
+async def assign_tech(
+    request: Request, ro_id: int = Form(...), tech_id: str = Form(...)
+):
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return Response(status_code=403)
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+
+    val = clean_int(tech_id)
+    # If -1 or empty, set to NULL (Unassigned)
+    if val == -1 or val is None:
+        cur.execute(
+            "UPDATE repair_orders SET assigned_tech_id = NULL WHERE id = %s", (ro_id,)
+        )
+    else:
+        cur.execute(
+            "UPDATE repair_orders SET assigned_tech_id = %s WHERE id = %s", (val, ro_id)
+        )
+
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/api/update-status")
+async def update_status(
+    request: Request, ro_id: int = Form(...), status: str = Form(...)
+):
+    user = get_current_user(request)
+    if not user:
+        return Response(status_code=403)
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+
+    # If status is "Closed", we treat it as Billing/Archiving
+    if status == "Closed":
+        cur.execute(
+            "UPDATE repair_orders SET status='Closed', completed_at=CURRENT_TIMESTAMP WHERE id=%s",
+            (ro_id,),
+        )
+    else:
+        cur.execute("UPDATE repair_orders SET status=%s WHERE id=%s", (status, ro_id))
+
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/ro/{ro_id}", status_code=303)
+
+
+@app.post("/api/update-line")
+async def update_line(
+    request: Request,
+    line_id: int = Form(...),
+    title: str = Form(...),
+    notes: str = Form(...),
+):
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return Response(status_code=403)
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE job_lines SET title=%s, notes=%s WHERE id=%s", (title, notes, line_id)
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse(request.headers.get("referer"), status_code=303)
+
+
+@app.post("/api/add-line")
+async def add_line(request: Request, ro_id: int = Form(...), title: str = Form(...)):
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return Response(status_code=403)
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO job_lines (ro_id, title, notes) VALUES (%s, %s, '')",
+        (ro_id, title),
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/ro/{ro_id}", status_code=303)
+
+
+@app.post("/api/delete-line")
+async def delete_line(request: Request, line_id: int = Form(...)):
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return Response(status_code=403)
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM labor_lines WHERE job_line_id = %s", (line_id,)
+    )  # Delete punches first
+    cur.execute("DELETE FROM job_lines WHERE id = %s", (line_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(request.headers.get("referer"), status_code=303)
+
+
+@app.post("/api/edit-labor")
+async def edit_labor(
+    request: Request, punch_id: int = Form(...), duration: float = Form(...)
+):
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return Response(status_code=403)
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    # Ensure we only edit closed punches (end_time is not null)
+    cur.execute(
+        "UPDATE labor_lines SET duration_hours=%s WHERE id=%s AND end_time IS NOT NULL",
+        (duration, punch_id),
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse(request.headers.get("referer"), status_code=303)
+
+
+# --- SHOP MANAGEMENT (UNIFIED PAGE) ---
+@app.get("/shop-management", response_class=HTMLResponse)
+async def shop_management_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+
+    # 1. Get Shop Info
+    cur.execute("SELECT * FROM shop_settings WHERE id = 1")
+    shop = cur.fetchone()
+
+    active_users = []
+    archived_users = []
+
+    if user["role"] == "admin":
+        # 2. Get Users (Split by Active/Archived)
+        cur.execute(
+            "SELECT * FROM users WHERE is_active = TRUE ORDER BY employee_number, role"
+        )
+        active_users = cur.fetchall()
+        for u in active_users:
+            # FIX: Use .get() to prevent crash if hire_date is missing
+            u["tenure"] = calculate_tenure(u.get("hire_date"))
+
+        cur.execute(
+            "SELECT * FROM users WHERE is_active = FALSE ORDER BY employee_number"
+        )
+        archived_users = cur.fetchall()
+        for u in archived_users:
+            u["tenure"] = calculate_tenure(u.get("hire_date"))
+
+    conn.close()
+    return templates.TemplateResponse(
+        "shop_management.html",
+        {
+            "request": request,
+            "user": user,
+            "shop": shop,
+            "users": active_users,
+            "archived": archived_users,
+        },
+    )
+
+
+@app.post("/update-shop-settings")
+async def update_shop_settings(request: Request):
+    form = await request.form()
+    user = get_current_user(request)
+
+    # 1. Security: Admin Only
+    if not user or user["role"] != "admin":
+        return RedirectResponse("/")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+
+    # 2. LOCK: Verify Password from DB
+    cur.execute(
+        "SELECT password_hash FROM users WHERE username = %s", (user["username"],)
+    )
+    db_user = cur.fetchone()
+
+    input_pass = form.get("confirm_password")
+
+    # If password incorrect, redirect with error
+    if not db_user or db_user["password_hash"] != hash_password(input_pass):
+        conn.close()
+        return RedirectResponse(
+            "/shop-management?error=wrong_password", status_code=303
+        )
+
+    # 3. Save Settings
+    cur.execute(
+        "UPDATE shop_settings SET name=%s, address=%s, phone=%s, labor_rate=%s WHERE id=1",
+        (
+            form.get("name"),
+            form.get("address"),
+            form.get("phone"),
+            clean_float(form.get("rate")),
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/shop-management", status_code=303)
+
+
+# --- USER ACTIONS ---
+@app.post("/create-user")
+async def create_user(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    role: str = Form(...),
+    pay_rate: str = Form(...),
+    tech_level: str = Form(None),
+    hire_date: str = Form(None),
+):
+    user = get_current_user(request)
+    if not user or user["role"] != "admin":
+        return RedirectResponse("/")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Generate ID & Defaults
+        emp_num = generate_employee_number(role, cur)
+        h_date = hire_date if hire_date else datetime.date.today()
+        history = f"[{datetime.date.today()}] Hired as {role}\n"
+
+        cur.execute(
+            """
+            INSERT INTO users (username, password_hash, role, pay_rate, tech_level, employee_number, is_active, hire_date, status_history)
+            VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s, %s)
+        """,
+            (
+                username,
+                hash_password(password),
+                role,
+                clean_float(pay_rate),
+                tech_level,
+                emp_num,
+                h_date,
+                history,
+            ),
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Create Error: {e}")
+    conn.close()
+    return RedirectResponse("/shop-management", status_code=303)
+
+
+@app.post("/update-user")
+async def update_user(
+    request: Request,
+    user_id: str = Form(...),
+    password: str = Form(None),
+    role: str = Form(...),
+    pay_rate: str = Form(...),
+    tech_level: str = Form(None),
+    hire_date: str = Form(None),
+):
+    user = get_current_user(request)
+    if not user or user["role"] != "admin":
+        return RedirectResponse("/")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Update details
+        cur.execute(
+            """
+            UPDATE users SET role=%s, pay_rate=%s, tech_level=%s, hire_date=%s WHERE id=%s
+        """,
+            (
+                role,
+                clean_float(pay_rate),
+                tech_level if role == "tech" else None,
+                hire_date,
+                clean_int(user_id),
+            ),
+        )
+
+        # Update Password if provided
+        if password and password.strip():
+            cur.execute(
+                "UPDATE users SET password_hash=%s WHERE id=%s",
+                (hash_password(password), clean_int(user_id)),
+            )
+
+        conn.commit()
+    except Exception as e:
+        print(f"Update Error: {e}")
+    conn.close()
+    return RedirectResponse("/shop-management", status_code=303)
+
+
+@app.post("/archive-user")
+async def archive_user(
+    request: Request, user_id: str = Form(...), reason: str = Form(...)
+):
+    user = get_current_user(request)
+    if not user or user["role"] != "admin":
+        return RedirectResponse("/")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    try:
+        note = f"\n[{datetime.date.today()}] Archived: {reason}"
+        cur.execute(
+            """
+            UPDATE users SET is_active = FALSE, status_history = COALESCE(status_history, '') || %s
+            WHERE id = %s
+        """,
+            (note, clean_int(user_id)),
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Archive Error: {e}")
+    conn.close()
+    return RedirectResponse("/shop-management", status_code=303)
+
+
+@app.post("/reactivate-user")
+async def reactivate_user(request: Request, user_id: str = Form(...)):
+    user = get_current_user(request)
+    if not user or user["role"] != "admin":
+        return RedirectResponse("/")
+
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    try:
+        note = f"\n[{datetime.date.today()}] Reactivated / Rehired"
+        cur.execute(
+            """
+            UPDATE users SET is_active = TRUE, status_history = COALESCE(status_history, '') || %s
+            WHERE id = %s
+        """,
+            (note, clean_int(user_id)),
+        )
+        conn.commit()
+    except Exception as e:
+        print(f"Reactivate Error: {e}")
+    conn.close()
+    return RedirectResponse("/shop-management", status_code=303)
+
+
+# --- RO OPERATIONS ---
+@app.get("/ro/{ro_id}", response_class=HTMLResponse)
+async def ro_detail(request: Request, ro_id: int):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse("/")
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+
+    # RO Details
+    cur.execute(
+        "SELECT ro.*, v.vin, v.unit_number, v.year, v.make, v.model, v.mileage, v.engine_hours, c.name as customer_name, c.contact_info FROM repair_orders ro JOIN vehicles v ON ro.vehicle_id = v.id JOIN customers c ON v.customer_id = c.id WHERE ro.id = %s",
+        (ro_id,),
+    )
+    ro = cur.fetchone()
+
+    # Job Lines & Labor Punches
+    cur.execute("SELECT * FROM job_lines WHERE ro_id = %s ORDER BY id ASC", (ro_id,))
+    lines = cur.fetchall()
+    total_hours = 0.0
+
+    for line in lines:
+        # Get individual punches to allow editing
+        cur.execute(
+            "SELECT id, tech_id, start_time, duration_hours, notes FROM labor_lines WHERE job_line_id = %s ORDER BY start_time",
+            (line["id"],),
+        )
+        line["punches"] = cur.fetchall()
+
+        # Calculate totals
+        line["total_hours"] = round(
+            sum(p["duration_hours"] or 0 for p in line["punches"]), 2
+        )
+        total_hours += line["total_hours"]
+
+    cur.execute("SELECT * FROM shop_settings WHERE id = 1")
+    shop = cur.fetchone()
+    conn.close()
+
+    return templates.TemplateResponse(
+        "ro_detail.html",
+        {
+            "request": request,
+            "ro": ro,
+            "lines": lines,
+            "user": user,
+            "shop": shop,
+            "total_hours": round(total_hours, 2),
+            "labor_total": round(total_hours * shop["labor_rate"], 2),
+        },
+    )
+
+
+@app.post("/close-ro/{ro_id}")
+async def close_ro(request: Request, ro_id: int):
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return RedirectResponse("/")
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE repair_orders SET status='Closed', completed_at=CURRENT_TIMESTAMP WHERE id=%s",
+        (ro_id,),
+    )
+    conn.commit()
+    conn.close()
+    return RedirectResponse(f"/ro/{ro_id}", status_code=303)
+
+
+@app.post("/submit-ro")
+async def submit_ro(request: Request):
+    form = await request.form()
+    user = get_current_user(request)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return RedirectResponse("/")
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    try:
+        v_id = clean_int(form.get("vehicle_id"))
+        is_new = form.get("is_new") == "true"
+        mileage = clean_int(form.get("mileage"))
+        hours = clean_float(form.get("hours"))
+        if is_new:
+            cur.execute(
+                "INSERT INTO vehicles (customer_id, vin, unit_number, year, make, model, engine_type, mileage, engine_hours) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (
+                    clean_int(form.get("new_cust_id")),
+                    form.get("new_vin", "").upper(),
+                    form.get("new_unit"),
+                    clean_int(form.get("new_year")),
+                    form.get("new_make"),
+                    form.get("new_model"),
+                    form.get("new_engine"),
+                    mileage,
+                    hours,
+                ),
+            )
+            v_id = cur.fetchone()[0]
+        else:
+            cur.execute(
+                "UPDATE vehicles SET mileage=%s, engine_hours=%s WHERE id=%s",
+                (mileage, hours, v_id),
+            )
+        cur.execute("CREATE SEQUENCE IF NOT EXISTS ro_sequence START 1000")
+        cur.execute("SELECT nextval('ro_sequence')")
+        next_ro = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO repair_orders (vehicle_id, ro_number, assigned_tech_id, status) VALUES (%s, %s, NULL, 'Open') RETURNING id",
+            (v_id, str(next_ro)),
+        )
+        ro_id = cur.fetchone()[0]
+        titles = form.getlist("lines_title[]")
+        notes = form.getlist("lines_notes[]")
+        for i in range(len(titles)):
+            if titles[i].strip():
+                cur.execute(
+                    "INSERT INTO job_lines (ro_id, title, notes) VALUES (%s, %s, %s)",
+                    (ro_id, titles[i], notes[i] if i < len(notes) else ""),
+                )
+        conn.commit()
+    except Exception as e:
+        print(f"Error creating RO: {e}")
+        conn.rollback()
+    conn.close()
+    return RedirectResponse("/", status_code=303)
+
+
+# --- WORKER & MISC ---
+@app.post("/clock-on-line/{line_id}")
+async def clock_on_line(request: Request, line_id: int, ro_id: int):
+    user = get_current_user(request)
+    if not user:
+        return Response(status_code=401)
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+
+    # 1. Clock out of any existing lines
+    cur.execute(
+        "UPDATE labor_lines SET end_time=CURRENT_TIMESTAMP, duration_hours=EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP-start_time))/3600 WHERE tech_id=%s AND end_time IS NULL",
+        (user["username"],),
+    )
+
+    # 2. Assign Tech if unassigned
+    cur.execute(
+        "UPDATE repair_orders SET assigned_tech_id=(SELECT id FROM users WHERE username=%s) WHERE id=%s AND assigned_tech_id IS NULL",
+        (user["username"], ro_id),
+    )
+
+    # 3. UPDATED: Set status to 'Work in Progress' if it is currently 'Open'
+    cur.execute(
+        "UPDATE repair_orders SET status='Work in Progress' WHERE id=%s AND status='Open'",
+        (ro_id,),
+    )
+
+    # 4. Clock in
+    cur.execute(
+        "INSERT INTO labor_lines (job_line_id, tech_id, start_time) VALUES (%s, %s, CURRENT_TIMESTAMP)",
+        (line_id, user["username"]),
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+
+@app.post("/clock-off")
+async def clock_off(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return Response(status_code=401)
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE labor_lines SET end_time=CURRENT_TIMESTAMP, duration_hours=EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP-start_time))/3600 WHERE tech_id=%s AND end_time IS NULL",
+        (user["username"],),
+    )
+    conn.commit()
+    conn.close()
+    return {"status": "clocked_out"}
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(r: Request):
+    return templates.TemplateResponse("login.html", {"request": r})
+
+
+@app.post("/login")
+async def login(r: Response, username: str = Form(...), password: str = Form(...)):
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+    # Only allow ACTIVE users to login
+    cur.execute(
+        "SELECT * FROM users WHERE username = %s AND is_active = TRUE", (username,)
+    )
+    user = cur.fetchone()
+    conn.close()
+    if user and user["password_hash"] == hash_password(password):
+        token = f"{user['username']}:{user['role']}"
+        resp = RedirectResponse(url="/", status_code=303)
+        resp.set_cookie(key="session_token", value=token, httponly=True)
+        return resp
+    return templates.TemplateResponse(
+        "login.html", {"request": {}, "error": "Invalid Credentials"}
+    )
+
+
+@app.get("/logout")
+async def logout(r: Response):
+    resp = RedirectResponse(url="/login", status_code=303)
+    resp.delete_cookie("session_token")
+    return resp
+
+
+@app.get("/new-ro", response_class=HTMLResponse)
+async def new_ro_page(r: Request):
+    user = get_current_user(r)
+    if not user or user["role"] not in ["admin", "manager"]:
+        return RedirectResponse("/")
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+    cur.execute("SELECT * FROM customers ORDER BY name ASC")
+    c = cur.fetchall()
+    conn.close()
+    return templates.TemplateResponse("create_ro.html", {"request": r, "customers": c})
+
+
+@app.get("/customers", response_class=HTMLResponse)
+async def customer_page(r: Request):
+    conn = db.get_db_connection()
+    cur = conn.cursor(cursor_factory=db.RealDictCursor)
+    cur.execute("SELECT * FROM customers ORDER BY name ASC")
+    c = cur.fetchall()
+    conn.close()
+    return templates.TemplateResponse("customers.html", {"request": r, "customers": c})
+
+
+@app.post("/add-customer")
+async def add_customer(r: Request, name: str = Form(...)):
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO customers (name) VALUES (%s)", (name,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/customers", 303)

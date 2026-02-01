@@ -1,0 +1,31 @@
+services:
+  # 1. The Database Service
+  db:
+    image: postgres:15
+    container_name: repairorder-db
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: your_secure_password
+      POSTGRES_DB: workorder_system
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # We don't even need to expose ports to the host anymore
+    # because the app talks to the db internally!
+
+  # 2. The Web App Service
+  web:
+    build: .
+    container_name: repairorder-app
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db # Tells Python to look for the service named 'db'
+    volumes:
+      - .:/app # Live editing enabled
+
+volumes:
+  postgres_data:

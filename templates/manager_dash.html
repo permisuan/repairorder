@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Team Management</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            /* Professional Font & Inputs */
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    "Helvetica Neue", Arial, sans-serif;
+            }
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+            input[type="number"] {
+                -moz-appearance: textfield;
+            }
+
+            /* Modal Backdrop */
+            dialog::backdrop {
+                background: rgba(0, 0, 0, 0.4);
+                backdrop-filter: blur(2px);
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50 text-slate-800 min-h-screen flex flex-col">
+        <header
+            class="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-20 flex justify-between items-center shadow-sm"
+        >
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">
+                    Team Management
+                </h1>
+                <p class="text-xs text-slate-500 font-medium">
+                    Manage user access, roles, and payroll
+                </p>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <a
+                    href="/"
+                    class="text-xs font-bold text-slate-500 hover:text-blue-600 uppercase tracking-wide mr-4"
+                    >← Back to Dashboard</a
+                >
+
+                <button
+                    onclick="openModal('create')"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-semibold shadow-sm transition-colors flex items-center gap-2"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4v16m8-8H4"
+                        />
+                    </svg>
+                    Add Team Member
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-5xl mx-auto w-full p-8">
+            <div
+                class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+            >
+                <table class="w-full text-left text-sm">
+                    <thead
+                        class="bg-gray-50 border-b border-gray-200 text-xs uppercase text-slate-500 font-bold"
+                    >
+                        <tr>
+                            <th class="px-6 py-3">Employee</th>
+                            <th class="px-6 py-3">Role</th>
+                            <th class="px-6 py-3">Level / Title</th>
+                            <th class="px-6 py-3 text-right">Pay Rate</th>
+                            <th class="px-6 py-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for u in users %}
+                        <tr class="hover:bg-blue-50/50 transition-colors group">
+                            <td class="px-6 py-4 font-semibold text-slate-900">
+                                {{ u.username }}
+                            </td>
+
+                            <td class="px-6 py-4">
+                                {% if u.role == 'admin' %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                                    >Manager</span
+                                >
+                                {% elif u.role == 'manager' %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                    >Foreman</span
+                                >
+                                {% else %}
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                    >Tech</span
+                                >
+                                {% endif %}
+                            </td>
+
+                            <td class="px-6 py-4 text-slate-600">
+                                {% if u.role == 'tech' %} {{ u.tech_level }} {%
+                                else %}
+                                <span class="text-gray-400 text-xs">N/A</span>
+                                {% endif %}
+                            </td>
+
+                            <td
+                                class="px-6 py-4 text-right font-mono text-slate-700"
+                            >
+                                ${{ "{:.2f}".format(u.pay_rate) }}<span
+                                    class="text-gray-400 text-xs"
+                                    >/hr</span
+                                >
+                            </td>
+
+                            <td class="px-6 py-4 text-center">
+                                <button
+                                    onclick='openModal("edit", {{ u|tojson }})'
+                                    class="text-blue-600 hover:text-blue-800 font-bold text-xs uppercase tracking-wide"
+                                >
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <dialog
+            id="userModal"
+            class="rounded-lg shadow-2xl p-0 w-full max-w-lg bg-white backdrop:bg-gray-900/50 open:animate-in open:fade-in open:zoom-in-95 duration-200"
+        >
+            <div
+                class="border-b border-gray-100 px-6 py-4 flex justify-between items-center bg-gray-50/50"
+            >
+                <h3 class="font-bold text-lg text-slate-800" id="modalTitle">
+                    Add New Member
+                </h3>
+                <button
+                    onclick="closeModal()"
+                    class="text-gray-400 hover:text-gray-600 font-bold text-xl"
+                >
+                    &times;
+                </button>
+            </div>
+
+            <form
+                id="userForm"
+                action="/create-user"
+                method="post"
+                class="p-6 space-y-5"
+            >
+                <input type="hidden" name="user_id" id="userId" />
+
+                <div class="grid grid-cols-2 gap-5">
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase text-slate-500 mb-1"
+                            >Username</label
+                        >
+                        <input
+                            type="text"
+                            name="username"
+                            id="inputUser"
+                            required
+                            class="w-full rounded-md border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition shadow-sm"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase text-slate-500 mb-1"
+                            id="passLabel"
+                            >Password</label
+                        >
+                        <input
+                            type="text"
+                            name="password"
+                            id="inputPass"
+                            required
+                            class="w-full rounded-md border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition shadow-sm"
+                        />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-5">
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase text-slate-500 mb-1"
+                            >Role</label
+                        >
+                        <select
+                            name="role"
+                            id="inputRole"
+                            onchange="toggleTechLevel()"
+                            class="w-full rounded-md border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition shadow-sm bg-white"
+                        >
+                            <option value="tech">Tech</option>
+                            <option value="manager">Foreman</option>
+                            <option value="admin">Manager</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold uppercase text-slate-500 mb-1"
+                            >Hourly Rate ($)</label
+                        >
+                        <input
+                            type="number"
+                            step="0.01"
+                            name="pay_rate"
+                            id="inputPay"
+                            required
+                            placeholder="0.00"
+                            class="w-full rounded-md border-gray-300 border px-3 py-2 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition shadow-sm font-mono"
+                        />
+                    </div>
+                </div>
+
+                <div id="techLevelGroup">
+                    <label
+                        class="block text-xs font-bold uppercase text-slate-500 mb-1"
+                        >Skill Level</label
+                    >
+                    <select
+                        name="tech_level"
+                        id="inputLevel"
+                        class="w-full rounded-md border-gray-300 border px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition shadow-sm bg-white"
+                    >
+                        <option value="Apprentice">Apprentice</option>
+                        <option value="Lube Tech">Lube Tech</option>
+                        <option value="Tech 1">Tech 1</option>
+                        <option value="Tech 2">Tech 2</option>
+                        <option value="Tech 3">Tech 3</option>
+                        <option value="Master Tech">Master Tech</option>
+                        <option value="Lead Tech">Lead Tech</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 flex gap-3">
+                    <button
+                        type="submit"
+                        id="submitBtn"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md text-sm font-bold shadow-sm transition-colors"
+                    >
+                        Create User
+                    </button>
+                    <button
+                        type="button"
+                        onclick="closeModal()"
+                        class="flex-1 bg-white border border-gray-300 text-slate-700 hover:bg-gray-50 py-2.5 rounded-md text-sm font-bold shadow-sm transition-colors"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </dialog>
+
+        <script>
+            const modal = document.getElementById("userModal");
+            const form = document.getElementById("userForm");
+
+            function openModal(mode, user = null) {
+                modal.showModal();
+
+                if (mode === "edit" && user) {
+                    // EDIT MODE
+                    document.getElementById("modalTitle").innerText =
+                        "Edit Team Member";
+                    document.getElementById("submitBtn").innerText =
+                        "Save Changes";
+                    form.action = "/update-user";
+
+                    document.getElementById("userId").value = user.id;
+                    document.getElementById("inputUser").value = user.username;
+                    document.getElementById("inputUser").readOnly = true;
+                    document
+                        .getElementById("inputUser")
+                        .classList.add("bg-gray-100", "text-gray-500");
+
+                    document.getElementById("inputPass").value = "";
+                    document.getElementById("inputPass").required = false;
+                    document.getElementById("inputPass").placeholder =
+                        "(Unchanged)";
+                    document.getElementById("passLabel").innerText =
+                        "New Password (Optional)";
+
+                    document.getElementById("inputRole").value = user.role;
+                    document.getElementById("inputPay").value = user.pay_rate;
+                    if (user.tech_level)
+                        document.getElementById("inputLevel").value =
+                            user.tech_level;
+                } else {
+                    // CREATE MODE
+                    document.getElementById("modalTitle").innerText =
+                        "Add New Member";
+                    document.getElementById("submitBtn").innerText =
+                        "Create User";
+                    form.reset();
+                    form.action = "/create-user";
+
+                    document.getElementById("userId").value = "";
+                    document.getElementById("inputUser").readOnly = false;
+                    document
+                        .getElementById("inputUser")
+                        .classList.remove("bg-gray-100", "text-gray-500");
+
+                    document.getElementById("inputPass").required = true;
+                    document.getElementById("inputPass").placeholder = "";
+                    document.getElementById("passLabel").innerText = "Password";
+                }
+                toggleTechLevel();
+            }
+
+            function closeModal() {
+                modal.close();
+            }
+
+            function toggleTechLevel() {
+                const role = document.getElementById("inputRole").value;
+                const group = document.getElementById("techLevelGroup");
+                group.style.display = role === "tech" ? "block" : "none";
+            }
+
+            // Close modal if clicked outside
+            modal.addEventListener("click", (e) => {
+                const rect = modal.getBoundingClientRect();
+                if (
+                    e.clientX < rect.left ||
+                    e.clientX > rect.right ||
+                    e.clientY < rect.top ||
+                    e.clientY > rect.bottom
+                ) {
+                    modal.close();
+                }
+            });
+        </script>
+    </body>
+</html>
