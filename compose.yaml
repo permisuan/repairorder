@@ -24,5 +24,8 @@ services:
       - db
     restart: always
 
+    volumes:
+      - .:/app
+
 volumes:
   postgres_data:

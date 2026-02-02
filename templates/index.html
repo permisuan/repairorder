@@ -1,340 +1,180 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>Foreman Dashboard</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            .ro-row:hover {
-                background-color: #1f2937;
-                cursor: pointer;
-            }
-            .tab-active {
-                border-bottom: 2px solid #3b82f6;
-                color: #3b82f6;
-            } /* Blue-500 */
-            .tab-inactive {
-                color: #6b7280;
-            }
-        </style>
-    </head>
-    <body class="bg-gray-950 text-gray-100 min-h-screen">
-        <nav
-            class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-lg"
-        >
-            <div class="flex items-center gap-4">
-                <h1
-                    class="text-2xl font-black italic text-blue-500 tracking-wider"
-                >
-                    SHOP<span class="text-white">MANAGER</span>
-                </h1>
-                <span
-                    class="bg-gray-800 text-xs px-2 py-1 rounded text-gray-400 font-bold uppercase"
-                    >{{ user.username }} ({{ user.role }})</span
-                >
-            </div>
-            <div class="flex gap-4">
-                <a
-                    href="/new-ro"
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold text-sm uppercase transition"
-                    >+ New RO</a
-                >
-                <a
-                    href="/shop-management"
-                    class="border border-gray-700 text-gray-400 hover:text-white px-4 py-2 rounded font-bold text-sm uppercase transition"
-                    >Admin</a
-                >
-                <a
-                    href="/logout"
-                    class="text-red-500 hover:text-red-400 font-bold text-sm uppercase px-2 py-2"
-                    >Logout</a
-                >
-            </div>
-        </nav>
+<head>
+    <meta charset="UTF-8" />
+    <title>Shop Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .ro-row:hover { background-color: #1f2937; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .tab-inactive { color: #6b7280; }
+        /* Smooth transition for sorting */
+        #active-body tr { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+    <nav class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-lg">
+        <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-black italic text-blue-500 tracking-wider">
+                SHOP<span class="text-white">MANAGER</span>
+            </h1>
+            <span class="bg-gray-800 text-xs px-2 py-1 rounded text-gray-400 font-bold uppercase">
+                {{ user.username }} ({{ user.role }})
+            </span>
+        </div>
+        <div class="flex gap-4">
+            <a href="/new-ro" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold text-sm uppercase transition">+ New RO</a>
+            <a href="/shop-management" class="border border-gray-700 text-gray-400 hover:text-white px-4 py-2 rounded font-bold text-sm uppercase transition">Admin</a>
+            <a href="/logout" class="text-red-500 hover:text-red-400 font-bold text-sm uppercase px-2 py-2">Logout</a>
+        </div>
+    </nav>
 
-        <main class="max-w-7xl mx-auto p-6">
-            <div class="flex justify-between items-end mb-6">
-                <div class="flex gap-6 border-b border-gray-800">
-                    <button
-                        onclick="switchTab('active')"
-                        id="tab-active"
-                        class="pb-2 text-sm font-bold uppercase tracking-widest tab-active"
-                    >
-                        Active Shop
-                    </button>
-                    <button
-                        onclick="switchTab('archive')"
-                        id="tab-archive"
-                        class="pb-2 text-sm font-bold uppercase tracking-widest tab-inactive"
-                    >
-                        Archives
-                    </button>
-                </div>
-                <div class="relative w-1/3">
-                    <input
-                        type="text"
-                        id="searchInput"
-                        onkeyup="filterTable()"
-                        placeholder="Search RO, Tech, Unit, VIN, Customer..."
-                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:border-blue-500 outline-none text-white"
-                    />
-                    <svg
-                        class="w-4 h-4 text-gray-500 absolute right-3 top-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        ></path>
-                    </svg>
-                </div>
+    <main class="max-w-7xl mx-auto p-6">
+        <div class="flex justify-between items-end mb-6">
+            <div class="flex gap-6 border-b border-gray-800">
+                <button onclick="switchTab('active')" id="tab-active" class="pb-2 text-sm font-bold uppercase tracking-widest tab-active">
+                    Active Jobs
+                </button>
+                <button onclick="switchTab('archive')" id="tab-archive" class="pb-2 text-sm font-bold uppercase tracking-widest tab-inactive">
+                    History
+                </button>
             </div>
+            <div class="relative w-1/3">
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search RO, Unit, VIN..."
+                    class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:border-blue-500 outline-none text-white" />
+            </div>
+        </div>
 
-            <div
-                id="active-view"
-                class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl"
-            >
+        <div id="active-view" class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl">
+            <div id="job-container">
                 <table class="w-full text-left text-sm">
-                    <thead
-                        class="bg-gray-800 text-xs uppercase text-gray-500 font-bold"
-                    >
+                    <thead class="bg-gray-800 text-xs uppercase text-gray-500 font-bold">
                         <tr>
                             <th class="px-6 py-4">RO #</th>
-                            <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Unit / VIN</th>
-                            <th class="px-6 py-4">Customer</th>
-                            <th class="px-6 py-4">Assigned Tech</th>
-                            <th class="px-6 py-4 text-right">Date In</th>
+                            <th class="px-6 py-4">Status</th> 
+                            <th class="px-6 py-4">Warranty</th>
+                            <th class="px-6 py-4 text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody id="active-body" class="divide-y divide-gray-800">
                         {% for ro in active_ros %}
-                        <tr class="ro-row group">
-                            <td
-                                class="px-6 py-4 font-mono text-blue-400 font-bold"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
+                        <tr class="ro-row job-row group" id="job-{{ ro.id }}">
+                            
+                            <td class="px-6 py-4 font-mono text-blue-400 font-bold cursor-pointer" onclick="window.location.href='/ro/{{ro.id}}'">
                                 {{ ro.ro_number }}
                             </td>
 
-                            <td
-                                class="px-6 py-4"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {% if ro.status == 'Open' %}
-                                <span
-                                    class="bg-blue-900/30 text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-900/50"
-                                    >OPEN</span
-                                >
-                                {% elif ro.status == 'Work in Progress' %}
-                                <span
-                                    class="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50 animate-pulse"
-                                    >IN PROGRESS</span
-                                >
-                                {% elif ro.status == 'Complete' %}
-                                <span
-                                    class="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs font-bold border border-green-900/50"
-                                    >COMPLETE</span
-                                >
-                                {% else %}
-                                <span
-                                    class="bg-gray-800 text-gray-400 px-2 py-1 rounded text-xs font-bold"
-                                    >{{ ro.status }}</span
-                                >
-                                {% endif %}
-                            </td>
-
-                            <td
-                                class="px-6 py-4"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                <div class="font-bold text-white">
-                                    {{ ro.unit_number }}
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    {{ ro.make }} {{ ro.model }}
-                                </div>
-                                <div
-                                    class="text-[10px] font-mono text-gray-600"
-                                >
-                                    {{ ro.vin }}
-                                </div>
-                            </td>
-                            <td
-                                class="px-6 py-4 font-medium text-gray-300"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {{ ro.customer_name }}
+                            <td class="px-6 py-4 cursor-pointer" onclick="window.location.href='/ro/{{ro.id}}'">
+                                <div class="font-bold text-white">{{ ro.unit_number }}</div>
+                                <div class="text-[10px] font-mono text-gray-600">{{ ro.vin }}</div>
+                                <div class="text-xs text-gray-500">{{ ro.customer_name }}</div>
                             </td>
 
                             <td class="px-6 py-4">
-                                <form
-                                    action="/api/assign-tech"
-                                    method="POST"
-                                    onclick="event.stopPropagation()"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="ro_id"
-                                        value="{{ ro.id }}"
-                                    />
-                                    <select
-                                        name="tech_id"
-                                        onchange="this.form.submit()"
-                                        class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:border-blue-500 outline-none hover:bg-gray-700 cursor-pointer text-gray-300"
-                                    >
-                                        <option
-                                            value="-1"
-                                            class="text-gray-500"
-                                        >
-                                            -- Unassigned --
-                                        </option>
-                                        {% for tech in techs %}
-                                        <option
-                                            value="{{ tech.id }}"
-                                            {%
-                                            if
-                                            ro.tech_id=""
-                                            ="tech.id"
-                                            %}selected{%
-                                            endif
-                                            %}
-                                        >
-                                            {{ tech.username }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </form>
+                                <select class="status-select bg-gray-800 border border-gray-700 text-gray-300 text-xs font-bold rounded px-2 py-1 outline-none focus:border-blue-500">
+                                    <option value="open" 
+                                        {% if ro.status == 'Open' or ro.status == 'open' %}selected{% endif %}>
+                                        Open
+                                    </option>
+                                    <option value="parts_ordered" 
+                                        {% if ro.status == 'Parts Ordered' or ro.status == 'parts_ordered' %}selected{% endif %}>
+                                        Parts Ordered
+                                    </option>
+                                    <option value="wip" 
+                                        {% if ro.status == 'Work in Progress' or ro.status == 'wip' %}selected{% endif %}>
+                                        Work in Progress
+                                    </option>
+                                    <option value="complete" 
+                                        {% if ro.status == 'Complete' or ro.status == 'complete' %}selected{% endif %}>
+                                        Complete
+                                    </option>
+                                </select>
                             </td>
 
-                            <td
-                                class="px-6 py-4 text-right text-gray-500 text-xs"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {{ ro.created_at.strftime('%Y-%m-%d') }}
+                            <td class="px-6 py-4">
+                                <label class="flex items-center space-x-2 cursor-pointer select-none">
+                                    <input type="checkbox" class="warranty-toggle w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-600 ring-offset-gray-800 focus:ring-2" 
+                                           {% if ro.is_warranty %}checked{% endif %}>
+                                    <span class="text-xs text-gray-500 font-bold group-hover:text-gray-300 transition">WARRANTY</span>
+                                </label>
                             </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% if not active_ros %}
-                <div class="p-8 text-center text-gray-600 italic">
-                    No active repair orders found.
-                </div>
-                {% endif %}
-            </div>
 
-            <div
-                id="archive-view"
-                class="hidden bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl opacity-75"
-            >
-                <table class="w-full text-left text-sm">
-                    <thead
-                        class="bg-gray-800 text-xs uppercase text-gray-500 font-bold"
-                    >
-                        <tr>
-                            <th class="px-6 py-4">RO #</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Unit / VIN</th>
-                            <th class="px-6 py-4">Customer</th>
-                            <th class="px-6 py-4">Tech</th>
-                            <th class="px-6 py-4 text-right">Date Closed</th>
-                        </tr>
-                    </thead>
-                    <tbody id="archive-body" class="divide-y divide-gray-800">
-                        {% for ro in archived_ros %}
-                        <tr
-                            class="ro-row hover:bg-gray-800/50 transition"
-                            onclick="window.location.href='/ro/{{ro.id}}'"
-                        >
-                            <td
-                                class="px-6 py-4 font-mono text-gray-500 font-bold"
-                            >
-                                {{ ro.ro_number }}
+                            <td class="px-6 py-4 text-center">
+                                <button class="clock-btn w-full px-4 py-2 rounded font-bold text-xs uppercase tracking-wider transition-colors shadow-lg
+                                    {% if ro.status == 'Work in Progress' or ro.status == 'wip' %}bg-red-600 hover:bg-red-500 text-white animate-pulse{% else %}bg-green-600 hover:bg-green-500 text-white{% endif %}">
+                                    {% if ro.status == 'Work in Progress' or ro.status == 'wip' %}CLOCK OFF{% else %}CLOCK ON{% endif %}
+                                </button>
                             </td>
-                            <td class="px-6 py-4">
-                                <span
-                                    class="bg-gray-800 text-gray-500 px-2 py-1 rounded text-xs font-bold"
-                                    >BILLED</span
-                                >
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="font-bold text-gray-400">
-                                    {{ ro.unit_number }}
-                                </div>
-                                <div
-                                    class="text-[10px] font-mono text-gray-600"
-                                >
-                                    {{ ro.vin }}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-gray-500">
-                                {{ ro.customer_name }}
-                            </td>
-                            <td class="px-6 py-4 text-gray-500">
-                                {{ ro.tech_name or 'Unassigned' }}
-                            </td>
-                            <td
-                                class="px-6 py-4 text-right text-gray-600 text-xs"
-                            >
-                                {{ ro.completed_at }}
-                            </td>
+
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </main>
+            {% if not active_ros %}
+            <div class="p-8 text-center text-gray-600 italic">No active repair orders found.</div>
+            {% endif %}
+        </div>
 
-        <script>
-            function switchTab(tab) {
-                const activeView = document.getElementById("active-view");
-                const archiveView = document.getElementById("archive-view");
-                const activeTab = document.getElementById("tab-active");
-                const archiveTab = document.getElementById("tab-archive");
+        <div id="archive-view" class="hidden bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl opacity-75">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-800 text-xs uppercase text-gray-500 font-bold">
+                    <tr>
+                        <th class="px-6 py-4">RO #</th>
+                        <th class="px-6 py-4">Unit</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Customer</th>
+                        <th class="px-6 py-4 text-right">Closed</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800">
+                    {% for ro in archived_ros %}
+                    <tr class="hover:bg-gray-800/50 transition cursor-pointer" onclick="window.location.href='/ro/{{ro.id}}'">
+                        <td class="px-6 py-4 font-mono text-gray-500 font-bold">{{ ro.ro_number }}</td>
+                        <td class="px-6 py-4 text-gray-500">{{ ro.unit_number }}</td>
+                        <td class="px-6 py-4"><span class="bg-gray-800 text-gray-500 px-2 py-1 rounded text-xs font-bold">BILLED</span></td>
+                        <td class="px-6 py-4 text-gray-600">{{ ro.customer_name }}</td>
+                        <td class="px-6 py-4 text-right text-gray-600 text-xs">{{ ro.completed_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
 
-                if (tab === "active") {
-                    activeView.classList.remove("hidden");
-                    archiveView.classList.add("hidden");
-                    activeTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
-                    archiveTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
-                } else {
-                    activeView.classList.add("hidden");
-                    archiveView.classList.remove("hidden");
-                    activeTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
-                    archiveTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
-                }
+    <script>
+        function switchTab(tab) {
+            const activeView = document.getElementById("active-view");
+            const archiveView = document.getElementById("archive-view");
+            const activeTab = document.getElementById("tab-active");
+            const archiveTab = document.getElementById("tab-archive");
+
+            if (tab === "active") {
+                activeView.classList.remove("hidden");
+                archiveView.classList.add("hidden");
+                activeTab.className = "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
+                archiveTab.className = "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
+            } else {
+                activeView.classList.add("hidden");
+                archiveView.classList.remove("hidden");
+                activeTab.className = "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
+                archiveTab.className = "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
             }
+        }
 
-            function filterTable() {
-                const input = document.getElementById("searchInput");
-                const filter = input.value.toUpperCase();
+        function filterTable() {
+            const input = document.getElementById("searchInput");
+            const filter = input.value.toUpperCase();
+            const rows = document.querySelectorAll(".ro-row");
 
-                // Function to filter a specific tbody
-                function filterBody(bodyId) {
-                    const body = document.getElementById(bodyId);
-                    if (!body) return;
-                    const rows = body.getElementsByTagName("tr");
-                    for (let i = 0; i < rows.length; i++) {
-                        let text = rows[i].textContent || rows[i].innerText;
-                        rows[i].style.display =
-                            text.toUpperCase().indexOf(filter) > -1
-                                ? ""
-                                : "none";
-                    }
-                }
+            rows.forEach(row => {
+                const text = row.innerText.toUpperCase();
+                row.style.display = text.indexOf(filter) > -1 ? "" : "none";
+            });
+        }
+    </script>
 
-                filterBody("active-body");
-                filterBody("archive-body");
-            }
-        </script>
-    </body>
+    <script src="/static/js/tech_view.js"></script>
+</body>
 </html>

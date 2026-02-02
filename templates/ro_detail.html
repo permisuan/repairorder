@@ -1,160 +1,160 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>RO #{{ ro.ro_number }} Workspace</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            .editable:hover {
-                border-bottom: 1px dashed #a855f7;
-                cursor: pointer;
-            }
-        </style>
-    </head>
-    <body class="bg-gray-950 text-gray-100 min-h-screen pb-20">
-        <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-10 shadow-lg flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <a href="/" class="text-gray-500 hover:text-white font-bold text-lg">&larr; Dashboard</a>
+<head>
+    <meta charset="UTF-8" />
+    <title>RO #{{ ro.ro_number }} Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .editable:hover {
+            border-bottom: 1px dashed #a855f7;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen pb-20">
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-10 shadow-lg flex justify-between items-center">
+        <div class="flex items-center gap-4">
+            <a href="/" class="text-gray-500 hover:text-white font-bold text-lg">&larr; Dashboard</a>
 
-                <div class="flex items-center gap-2">
-                    <h1 class="text-2xl font-mono font-bold text-white">RO #{{ ro.ro_number }}</h1>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-mono font-bold text-white">RO #{{ ro.ro_number }}</h1>
 
-                    <form action="/api/update-status" method="POST">
-                        <input type="hidden" name="ro_id" value="{{ ro.id }}" />
-                        <select name="status" onchange="this.form.submit()" 
-                                class="ml-2 font-bold text-sm uppercase px-3 py-1 rounded border border-gray-700 bg-gray-800 focus:outline-none focus:border-purple-500 cursor-pointer 
-                                {% if ro.status == 'Open' %}text-blue-400 border-blue-900 
-                                {% elif ro.status == 'Work in Progress' %}text-yellow-400 border-yellow-900 animate-pulse 
-                                {% elif ro.status == 'Complete' %}text-green-400 border-green-900 
-                                {% else %}text-gray-500{% endif %}">
-                            <option value="Open" {% if ro.status == 'Open' %}selected{% endif %}>Open</option>
-                            <option value="Work in Progress" {% if ro.status == 'Work in Progress' %}selected{% endif %}>Work in Progress</option>
-                            <option value="Complete" {% if ro.status == 'Complete' %}selected{% endif %}>Complete (Ready to Bill)</option>
-                            <option value="Closed">Bill & Archive</option>
-                        </select>
-                    </form>
-                </div>
-            </div>
-
-            <div class="text-right">
-                <h2 class="text-lg font-bold text-purple-100">{{ ro.customer_name }}</h2>
-                <p class="text-xs text-gray-500 font-mono">{{ ro.unit_number }} &bull; {{ ro.make }} {{ ro.model }}</p>
-                <p class="text-[10px] text-gray-600">{{ ro.vin }}</p>
-            </div>
-        </header>
-
-        <main class="max-w-5xl mx-auto p-6 space-y-8">
-            <div class="space-y-4">
-                <div class="flex justify-between items-center border-b border-gray-800 pb-2">
-                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Job Lines</h3>
-                    <button onclick="document.getElementById('addLineModal').showModal()" 
-                            class="text-xs font-bold text-purple-400 hover:text-purple-300 uppercase bg-purple-900/20 px-3 py-1 rounded transition">
-                        + Add Line
-                    </button>
-                </div>
-
-                {% for line in lines %}
-                <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 shadow-lg relative group transition hover:border-gray-700">
-                    {% if user.role in ['admin', 'manager', 'foreman'] %}
-                    <form action="/api/delete-line" method="POST" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition" 
-                          onsubmit="return confirm('Delete this line and all labor hours?');">
-                        <input type="hidden" name="line_id" value="{{ line.id }}" />
-                        <button class="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase border border-red-900/30 px-2 py-1 rounded hover:bg-red-900/20">Delete Line</button>
-                    </form>
-                    {% endif %}
-
-                    <div onclick="editLine('{{line.id}}', '{{line.title}}', `{{line.notes}}`)" class="cursor-pointer">
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-mono text-gray-600">#{{ loop.index }}</span>
-                            <h4 class="text-lg font-bold text-white group-hover:text-purple-400 transition">{{ line.title }}</h4>
-                        </div>
-                        <p class="text-gray-400 text-sm whitespace-pre-wrap pl-6 border-l-2 border-gray-800">{{ line.notes or 'No notes.' }}</p>
-                    </div>
-
-                    <div class="mt-4 ml-6 bg-gray-950/50 rounded-lg p-4 border border-gray-800/50">
-                        <table class="w-full text-xs text-left">
-                            <thead>
-                                <tr class="text-gray-600 uppercase border-b border-gray-800">
-                                    <th class="pb-2 pl-2">Tech</th>
-                                    <th class="pb-2">Start Time</th>
-                                    <th class="pb-2 text-right pr-2">Duration</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-800">
-                                {% for punch in line.punches %}
-                                <tr>
-                                    <td class="py-2 pl-2 text-gray-300 font-bold">{{ punch.tech_id }}</td>
-                                    <td class="py-2 text-gray-600">{{ punch.start_time.strftime('%b %d, %H:%M') }}</td>
-                                    <td class="py-2 text-right font-mono font-bold pr-2">
-                                        {% if punch.duration_hours %}
-                                            <span class="text-green-400">{{ "{:.2f}".format(punch.duration_hours) }} hrs</span>
-                                        {% else %}
-                                            <span class="text-yellow-500 animate-pulse">Running</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="3" class="py-2 text-center text-gray-700 italic">No labor yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 flex justify-between items-center shadow-2xl">
-                <div>
-                    <p class="text-xs text-gray-500 uppercase font-bold tracking-widest">Total Labor Hours</p>
-                    <p class="text-3xl font-mono font-black text-white">{{ total_hours }} hrs</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs text-gray-500 uppercase font-bold tracking-widest">Est. Labor Cost</p>
-                    <p class="text-3xl font-mono font-black text-green-400">${{ labor_total }}</p>
-                </div>
-            </div>
-        </main>
-
-        <dialog id="editLineModal" class="bg-gray-900 text-white rounded-xl shadow-2xl p-0 w-full max-w-lg border border-gray-700 backdrop:bg-black/80">
-            <div class="p-6">
-                <h3 class="text-lg font-bold text-purple-400 mb-4 uppercase">Edit Job Line</h3>
-                <form action="/api/update-line" method="POST" class="space-y-4">
-                    <input type="hidden" name="line_id" id="editLineId" />
-                    <input type="text" name="title" id="editLineTitle" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white font-bold" />
-                    <textarea name="notes" id="editLineNotes" rows="6" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-gray-300"></textarea>
-                    <div class="flex gap-4">
-                        <button class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-black uppercase text-xs transition">Save Changes</button>
-                        <button type="button" onclick="document.getElementById('editLineModal').close()" class="flex-1 bg-gray-800 hover:bg-gray-700 py-3 rounded-lg font-black uppercase text-xs text-gray-400 transition">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </dialog>
-
-        <dialog id="addLineModal" class="bg-gray-900 text-white rounded-xl shadow-2xl p-0 w-full max-w-lg border border-gray-700 backdrop:bg-black/80">
-            <div class="p-6">
-                <h3 class="text-lg font-bold text-purple-400 mb-4 uppercase">Add New Job Line</h3>
-                <form action="/api/add-line" method="POST" class="space-y-4">
+                <form action="/api/update-status" method="POST">
                     <input type="hidden" name="ro_id" value="{{ ro.id }}" />
-                    <input type="text" name="title" required placeholder="e.g. Diagnose Brakes" class="w-full bg-gray-800 border border-gray-700 rounded p-2" />
-                    <div class="flex gap-4">
-                        <button class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-black uppercase text-xs transition">Add Line</button>
-                        <button type="button" onclick="document.getElementById('addLineModal').close()" class="flex-1 bg-gray-800 hover:bg-gray-700 py-3 rounded-lg text-gray-400 transition">Cancel</button>
-                    </div>
+                    <select name="status" onchange="this.form.submit()" 
+                            class="ml-2 font-bold text-sm uppercase px-3 py-1 rounded border border-gray-700 bg-gray-800 focus:outline-none focus:border-purple-500 cursor-pointer 
+                            {% if ro.status == 'Open' %} text-blue-400 border-blue-900 
+                            {% elif ro.status == 'Work in Progress' %} text-yellow-400 border-yellow-900 animate-pulse 
+                            {% elif ro.status == 'Complete' %} text-green-400 border-green-900 
+                            {% else %} text-gray-500 {% endif %}">
+                        <option value="Open" {% if ro.status == 'Open' %}selected{% endif %}>Open</option>
+                        <option value="Work in Progress" {% if ro.status == 'Work in Progress' %}selected{% endif %}>Work in Progress</option>
+                        <option value="Complete" {% if ro.status == 'Complete' %}selected{% endif %}>Complete (Ready to Bill)</option>
+                        <option value="Closed">Bill & Archive</option>
+                    </select>
                 </form>
             </div>
-        </dialog>
+        </div>
 
-        <script>
-            function editLine(id, title, notes) {
-                document.getElementById("editLineId").value = id;
-                document.getElementById("editLineTitle").value = title;
-                document.getElementById("editLineNotes").value = notes;
-                document.getElementById("editLineModal").showModal();
-            }
-            const modals = document.querySelectorAll("dialog");
-            modals.forEach((modal) => {
-                modal.addEventListener("click", (e) => { if (e.target === modal) modal.close(); });
-            });
-        </script>
-    </body>
+        <div class="text-right">
+            <h2 class="text-lg font-bold text-purple-100">{{ ro.customer_name }}</h2>
+            <p class="text-xs text-gray-500 font-mono">{{ ro.unit_number }} &bull; {{ ro.make }} {{ ro.model }}</p>
+            <p class="text-[10px] text-gray-600">{{ ro.vin }}</p>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto p-6 space-y-8">
+        <div class="space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Job Lines</h3>
+                <button onclick="document.getElementById('addLineModal').showModal()" 
+                        class="text-xs font-bold text-purple-400 hover:text-purple-300 uppercase bg-purple-900/20 px-3 py-1 rounded transition">
+                    + Add Line
+                </button>
+            </div>
+
+            {% for line in lines %}
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-6 shadow-lg relative group transition hover:border-gray-700">
+                {% if user.role in ['admin', 'manager', 'foreman'] %}
+                <form action="/api/delete-line" method="POST" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition" 
+                      onsubmit="return confirm('Delete this line and all labor hours?');">
+                    <input type="hidden" name="line_id" value="{{ line.id }}" />
+                    <button class="text-red-500 hover:text-red-400 text-[10px] font-bold uppercase border border-red-900/30 px-2 py-1 rounded hover:bg-red-900/20">Delete Line</button>
+                </form>
+                {% endif %}
+
+                <div onclick="editLine('{{line.id}}', '{{line.title}}', `{{line.notes}}`)" class="cursor-pointer">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-mono text-gray-600">#{{ loop.index }}</span>
+                        <h4 class="text-lg font-bold text-white group-hover:text-purple-400 transition">{{ line.title }}</h4>
+                    </div>
+                    <p class="text-gray-400 text-sm whitespace-pre-wrap pl-6 border-l-2 border-gray-800">{{ line.notes or 'No notes.' }}</p>
+                </div>
+
+                <div class="mt-4 ml-6 bg-gray-950/50 rounded-lg p-4 border border-gray-800/50">
+                    <table class="w-full text-xs text-left">
+                        <thead>
+                            <tr class="text-gray-600 uppercase border-b border-gray-800">
+                                <th class="pb-2 pl-2">Tech</th>
+                                <th class="pb-2">Start Time</th>
+                                <th class="pb-2 text-right pr-2">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800">
+                            {% for punch in line.punches %}
+                            <tr>
+                                <td class="py-2 pl-2 text-gray-300 font-bold">{{ punch.tech_id }}</td>
+                                <td class="py-2 text-gray-600">{{ punch.start_time.strftime('%b %d, %H:%M') }}</td>
+                                <td class="py-2 text-right font-mono font-bold pr-2">
+                                    {% if punch.duration_hours %}
+                                        <span class="text-green-400">{{ "{:.2f}".format(punch.duration_hours) }} hrs</span>
+                                    {% else %}
+                                        <span class="text-yellow-500 animate-pulse">Running</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="py-2 text-center text-gray-700 italic">No labor yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 flex justify-between items-center shadow-2xl">
+            <div>
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-widest">Total Labor Hours</p>
+                <p class="text-3xl font-mono font-black text-white">{{ total_hours }} hrs</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xs text-gray-500 uppercase font-bold tracking-widest">Est. Labor Cost</p>
+                <p class="text-3xl font-mono font-black text-green-400">${{ labor_total }}</p>
+            </div>
+        </div>
+    </main>
+
+    <dialog id="editLineModal" class="bg-gray-900 text-white rounded-xl shadow-2xl p-0 w-full max-w-lg border border-gray-700 backdrop:bg-black/80">
+        <div class="p-6">
+            <h3 class="text-lg font-bold text-purple-400 mb-4 uppercase">Edit Job Line</h3>
+            <form action="/api/update-line" method="POST" class="space-y-4">
+                <input type="hidden" name="line_id" id="editLineId" />
+                <input type="text" name="title" id="editLineTitle" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white font-bold" />
+                <textarea name="notes" id="editLineNotes" rows="6" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-gray-300"></textarea>
+                <div class="flex gap-4">
+                    <button class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-black uppercase text-xs transition">Save Changes</button>
+                    <button type="button" onclick="document.getElementById('editLineModal').close()" class="flex-1 bg-gray-800 hover:bg-gray-700 py-3 rounded-lg font-black uppercase text-xs text-gray-400 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="addLineModal" class="bg-gray-900 text-white rounded-xl shadow-2xl p-0 w-full max-w-lg border border-gray-700 backdrop:bg-black/80">
+        <div class="p-6">
+            <h3 class="text-lg font-bold text-purple-400 mb-4 uppercase">Add New Job Line</h3>
+            <form action="/api/add-line" method="POST" class="space-y-4">
+                <input type="hidden" name="ro_id" value="{{ ro.id }}" />
+                <input type="text" name="title" required placeholder="e.g. Diagnose Brakes" class="w-full bg-gray-800 border border-gray-700 rounded p-2" />
+                <div class="flex gap-4">
+                    <button class="flex-1 bg-purple-600 hover:bg-purple-500 py-3 rounded-lg font-black uppercase text-xs transition">Add Line</button>
+                    <button type="button" onclick="document.getElementById('addLineModal').close()" class="flex-1 bg-gray-800 hover:bg-gray-700 py-3 rounded-lg text-gray-400 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <script>
+        function editLine(id, title, notes) {
+            document.getElementById("editLineId").value = id;
+            document.getElementById("editLineTitle").value = title;
+            document.getElementById("editLineNotes").value = notes;
+            document.getElementById("editLineModal").showModal();
+        }
+        const modals = document.querySelectorAll("dialog");
+        modals.forEach((modal) => {
+            modal.addEventListener("click", (e) => { if (e.target === modal) modal.close(); });
+        });
+    </script>
+</body>
 </html>

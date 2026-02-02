@@ -1,15 +1,22 @@
 import datetime
 import json
 import httpx
-from fastapi import FastAPI, Form, Request, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, Form, Request, Response, Body
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 import database as db
 import auth  # Integrated security logic
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+
+# --- DATA MODELS (For JS Communication) ---
+class JobUpdate(BaseModel):
+    job_id: int
+    status: str
+    note: str | None = None
 
 # --- GLOBAL FIX: JSON Date Serializer for Templates ---
 def custom_json_serializer(obj):
@@ -60,7 +67,12 @@ def generate_employee_number(role, cur):
         (start, end),
     )
     res = cur.fetchone()
-    highest = res[0] if res else None
+    # Handle both tuple (psycopg2) and RealDictCursor cases safely
+    if res:
+        highest = res[0] if isinstance(res, tuple) else res.get('max')
+    else:
+        highest = None
+        
     return highest + 1 if highest else start
 
 def calculate_tenure(hire_date):
@@ -126,7 +138,6 @@ async def get_active_timer(request: Request):
     row = cur.fetchone()
     conn.close()
     if row:
-        # Use timezone-aware 'now' to match DB if necessary
         start = row["start_time"]
         now = datetime.datetime.now(start.tzinfo) if start.tzinfo else datetime.datetime.now()
         diff = (now - start).total_seconds()
@@ -154,6 +165,7 @@ async def dashboard(request: Request):
 
         cur.execute("""
             SELECT ro.id, ro.ro_number, ro.status, ro.created_at,
+                   ro.is_warranty, ro.tech_notes,
                    v.unit_number, v.make, v.model, v.vin,
                    c.name as customer_name,
                    u.username as tech_name, u.id as tech_id
@@ -198,8 +210,9 @@ async def dashboard(request: Request):
             tech["duration"] = round(diff / 3600.0, 2)
 
         conn.close()
+        
         return templates.TemplateResponse(
-            "foreman_dash.html",
+            "index.html",
             {
                 "request": request, 
                 "user": user, 
@@ -210,6 +223,7 @@ async def dashboard(request: Request):
             }
         )
     else:
+        # --- TECH DASHBOARD LOGIC ---
         cur.execute("""
             SELECT ro.id, ro.ro_number, ro.vehicle_id, ro.status,
                    v.vin, v.unit_number, v.year, v.make, v.model,
@@ -220,8 +234,10 @@ async def dashboard(request: Request):
             JOIN customers c ON v.customer_id = c.id
             JOIN users u ON ro.assigned_tech_id = u.id
             WHERE u.username = %s AND ro.status != 'Closed'
+            ORDER BY CASE WHEN ro.status = 'Work in Progress' THEN 0 ELSE 1 END, ro.ro_number DESC
         """, (user["username"],))
         my_jobs = cur.fetchall()
+        
         for job in my_jobs:
             cur.execute("SELECT id, title, notes FROM job_lines WHERE ro_id = %s ORDER BY id ASC", (job["id"],))
             job["lines"] = cur.fetchall()
@@ -246,6 +262,67 @@ async def dashboard(request: Request):
         )
 
 # --- API ROUTES ---
+
+# NEW: Update Job Status from JS Fetch (Handles JSON)
+@app.post("/update_job")
+async def update_job_status(update: JobUpdate, request: Request):
+    user = get_current_user(request)
+    if not user: return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+
+    # Map JS status values to Database values
+    status_map = {
+        'open': 'Open',
+        'parts_ordered': 'Parts Ordered',
+        'wip': 'Work in Progress',
+        'complete': 'Closed'
+    }
+    
+    db_status = status_map.get(update.status, 'Open')
+    
+    try:
+        if db_status == 'Closed':
+            cur.execute("""
+                UPDATE repair_orders 
+                SET status='Closed', completed_at=CURRENT_TIMESTAMP, tech_notes=%s 
+                WHERE id=%s
+            """, (update.note, update.job_id))
+        else:
+            cur.execute("UPDATE repair_orders SET status=%s WHERE id=%s", (db_status, update.job_id))
+            
+        conn.commit()
+    except Exception as e:
+        print(f"Error updating job: {e}")
+        conn.close()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+    conn.close()
+    return {"status": "success"}
+
+# NEW: Grab Job Route
+@app.get("/grab-job/{ro_id}")
+async def grab_job(request: Request, ro_id: int):
+    user = get_current_user(request)
+    if not user: return RedirectResponse("/")
+    
+    conn = db.get_db_connection()
+    cur = conn.cursor()
+    
+    # 1. Get the tech's user ID
+    cur.execute("SELECT id FROM users WHERE username = %s", (user['username'],))
+    res = cur.fetchone()
+    
+    if res:
+        tech_db_id = res[0] # Tuple access for standard cursor
+        # 2. Assign the job
+        cur.execute("UPDATE repair_orders SET assigned_tech_id = %s, status = 'Open' WHERE id = %s", (tech_db_id, ro_id))
+        conn.commit()
+        
+    conn.close()
+    return RedirectResponse("/", status_code=303)
+
 @app.post("/api/assign-tech")
 async def assign_tech(request: Request, ro_id: int = Form(...), tech_id: str = Form(...)):
     user = get_current_user(request)
@@ -261,18 +338,16 @@ async def assign_tech(request: Request, ro_id: int = Form(...), tech_id: str = F
     conn.close()
     return RedirectResponse("/", status_code=303)
 
-@app.post("/api/update-status")
-async def update_status(request: Request, ro_id: int = Form(...), status: str = Form(...)):
+@app.post("/api/update-warranty")
+async def update_warranty(request: Request, ro_id: int = Form(...), is_warranty: str = Form(...)):
     if not get_current_user(request): return Response(status_code=403)
     conn = db.get_db_connection()
     cur = conn.cursor()
-    if status == "Closed":
-        cur.execute("UPDATE repair_orders SET status='Closed', completed_at=CURRENT_TIMESTAMP WHERE id=%s", (ro_id,))
-    else:
-        cur.execute("UPDATE repair_orders SET status=%s WHERE id=%s", (status, ro_id))
+    val = is_warranty.lower() == 'true'
+    cur.execute("UPDATE repair_orders SET is_warranty=%s WHERE id=%s", (val, ro_id))
     conn.commit()
     conn.close()
-    return RedirectResponse(f"/ro/{ro_id}", status_code=303)
+    return {"status": "success"}
 
 @app.post("/api/update-line")
 async def update_line(request: Request, line_id: int = Form(...), title: str = Form(...), notes: str = Form(...)):
@@ -288,10 +363,8 @@ async def update_line(request: Request, line_id: int = Form(...), title: str = F
 @app.post("/api/add-line")
 async def add_line(request: Request, ro_id: int = Form(...), title: str = Form(...)):
     user = get_current_user(request)
-    # Ensure permission
     if not user or user["role"] not in ["admin", "manager", "foreman"]: 
         return Response(content="Forbidden", status_code=403)
-    
     conn = db.get_db_connection()
     cur = conn.cursor()
     cur.execute("INSERT INTO job_lines (ro_id, title, notes) VALUES (%s, %s, '')", (ro_id, title))
@@ -506,7 +579,7 @@ async def submit_ro(request: Request):
                 INSERT INTO vehicles (customer_id, vin, unit_number, year, make, model, engine_type, mileage, engine_hours) 
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
             """, (clean_int(form.get("new_cust_id")), form.get("new_vin", "").upper(), form.get("new_unit"),
-                 clean_int(form.get("new_year")), form.get("new_make"), form.get("new_model"), form.get("new_engine"), mileage, hours))
+                  clean_int(form.get("new_year")), form.get("new_make"), form.get("new_model"), form.get("new_engine"), mileage, hours))
             v_id = cur.fetchone()[0]
         else:
             cur.execute("UPDATE vehicles SET mileage=%s, engine_hours=%s WHERE id=%s", (mileage, hours, v_id))
