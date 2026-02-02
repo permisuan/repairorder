@@ -53,6 +53,49 @@
         </nav>
 
         <main class="max-w-7xl mx-auto p-6">
+            
+            <div class="mb-10">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <h2 class="text-sm font-black uppercase tracking-widest text-gray-400">Active Shop Floor</h2>
+                </div>
+                
+                <div class="bg-gray-900 rounded-xl border border-blue-900/30 overflow-hidden shadow-2xl">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 font-bold">
+                            <tr>
+                                <th class="px-6 py-4">Technician</th>
+                                <th class="px-6 py-4">Current RO</th>
+                                <th class="px-6 py-4">Task</th>
+                                <th class="px-6 py-4 text-right">Time on Task</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-800">
+                            {% for tech in active_techs %}
+                            <tr class="hover:bg-gray-800/30 transition">
+                                <td class="px-6 py-4 font-bold text-white">{{ tech.tech_name }}</td>
+                                <td class="px-6 py-4 font-mono text-blue-400">
+                                    <a href="/ro/{{ tech.ro_number }}" class="hover:underline">#{{ tech.ro_number }}</a>
+                                </td>
+                                <td class="px-6 py-4 text-gray-300">{{ tech.job_title }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <span class="px-2 py-1 rounded text-xs font-bold border {% if tech.duration > 8 %}bg-red-900/30 text-red-400 border-red-900/50{% else %}bg-green-900/30 text-green-400 border-green-900/50{% endif %}">
+                                        {{ tech.duration }} hrs
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-gray-600 italic">
+                                    No technicians are currently clocked onto a task.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="flex justify-between items-end mb-6">
                 <div class="flex gap-6 border-b border-gray-800">
                     <button
@@ -60,7 +103,7 @@
                         id="tab-active"
                         class="pb-2 text-sm font-bold uppercase tracking-widest tab-active"
                     >
-                        Active Shop
+                        Repair Orders
                     </button>
                     <button
                         onclick="switchTab('archive')"
@@ -75,7 +118,7 @@
                         type="text"
                         id="searchInput"
                         onkeyup="filterTable()"
-                        placeholder="Search RO, Tech, Unit, VIN, Customer..."
+                        placeholder="Search RO, Tech, Unit, VIN..."
                         class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:border-blue-500 outline-none text-white"
                     />
                     <svg
@@ -196,13 +239,7 @@
                                         {% for tech in techs %}
                                         <option
                                             value="{{ tech.id }}"
-                                            {%
-                                            if
-                                            ro.tech_id == tech.id
-                                            
-                                            %}selected{%
-                                            endif
-                                            %}
+                                            {% if ro.tech_id == tech.id %}selected{% endif %}
                                         >
                                             {{ tech.username }}
                                         </option>
@@ -318,7 +355,6 @@
                 const input = document.getElementById("searchInput");
                 const filter = input.value.toUpperCase();
 
-                // Function to filter a specific tbody
                 function filterBody(bodyId) {
                     const body = document.getElementById(bodyId);
                     if (!body) return;

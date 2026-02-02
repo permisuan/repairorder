@@ -1,31 +1,28 @@
 services:
-  # 1. The Database Service
   db:
     image: postgres:15
-    container_name: repairorder-db
-    restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: your_secure_password
-      POSTGRES_DB: workorder_system
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # We don't even need to expose ports to the host anymore
-    # because the app talks to the db internally!
+    restart: always
 
-  # 2. The Web App Service
   web:
     build: .
-    container_name: repairorder-app
-    restart: always
+    environment:
+      - DB_HOST=db
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+    # Port 8000 is mapped for local testing; NPM will use this to find the app
     ports:
       - "8000:8000"
     depends_on:
       - db
-    environment:
-      - DB_HOST=db # Tells Python to look for the service named 'db'
-    volumes:
-      - .:/app # Live editing enabled
+    restart: always
 
 volumes:
   postgres_data:
