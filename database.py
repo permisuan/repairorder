@@ -3,18 +3,23 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# Export RealDictCursor for clean imports in other modules
+__all__ = ["get_db_connection", "search_vehicles", "RealDictCursor"]
+
 
 def get_db_connection():
+    """Get a database connection using environment variables."""
     return psycopg2.connect(
-        host=os.getenv("DB_HOST", "db"),  # Defaults to 'db' (docker service name)
-        port="5432",  # Always 5432 inside Docker network
-        database="workorder_system",
-        user="admin",
-        password="your_secure_password",
+        host=os.getenv("DB_HOST", "db"),
+        port=os.getenv("DB_PORT", "5432"),
+        database=os.getenv("DB_NAME", "repairorder"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASS", os.getenv("DB_PASSWORD", "")),
     )
 
 
 def search_vehicles(term):
+    """Search for vehicles by VIN, unit number, or customer name."""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 

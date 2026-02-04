@@ -1,376 +1,319 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>Foreman Dashboard</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            .ro-row:hover {
-                background-color: #1f2937;
-                cursor: pointer;
-            }
-            .tab-active {
-                border-bottom: 2px solid #3b82f6;
-                color: #3b82f6;
-            } /* Blue-500 */
-            .tab-inactive {
-                color: #6b7280;
-            }
-        </style>
-    </head>
-    <body class="bg-gray-950 text-gray-100 min-h-screen">
-        <nav
-            class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-lg"
-        >
-            <div class="flex items-center gap-4">
-                <h1
-                    class="text-2xl font-black italic text-blue-500 tracking-wider"
-                >
-                    SHOP<span class="text-white">MANAGER</span>
-                </h1>
-                <span
-                    class="bg-gray-800 text-xs px-2 py-1 rounded text-gray-400 font-bold uppercase"
-                    >{{ user.username }} ({{ user.role }})</span
-                >
-            </div>
-            <div class="flex gap-4">
-                <a
-                    href="/new-ro"
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold text-sm uppercase transition"
-                    >+ New RO</a
-                >
-                <a
-                    href="/shop-management"
-                    class="border border-gray-700 text-gray-400 hover:text-white px-4 py-2 rounded font-bold text-sm uppercase transition"
-                    >Admin</a
-                >
-                <a
-                    href="/logout"
-                    class="text-red-500 hover:text-red-400 font-bold text-sm uppercase px-2 py-2"
-                    >Logout</a
-                >
-            </div>
-        </nav>
 
-        <main class="max-w-7xl mx-auto p-6">
-            
-            <div class="mb-10">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <h2 class="text-sm font-black uppercase tracking-widest text-gray-400">Active Shop Floor</h2>
-                </div>
-                
-                <div class="bg-gray-900 rounded-xl border border-blue-900/30 overflow-hidden shadow-2xl">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 font-bold">
-                            <tr>
-                                <th class="px-6 py-4">Technician</th>
-                                <th class="px-6 py-4">Current RO</th>
-                                <th class="px-6 py-4">Task</th>
-                                <th class="px-6 py-4 text-right">Time on Task</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-800">
-                            {% for tech in active_techs %}
-                            <tr class="hover:bg-gray-800/30 transition">
-                                <td class="px-6 py-4 font-bold text-white">{{ tech.tech_name }}</td>
-                                <td class="px-6 py-4 font-mono text-blue-400">
-                                    <a href="/ro/{{ tech.ro_number }}" class="hover:underline">#{{ tech.ro_number }}</a>
-                                </td>
-                                <td class="px-6 py-4 text-gray-300">{{ tech.job_title }}</td>
-                                <td class="px-6 py-4 text-right">
-                                    <span class="px-2 py-1 rounded text-xs font-bold border {% if tech.duration > 8 %}bg-red-900/30 text-red-400 border-red-900/50{% else %}bg-green-900/30 text-green-400 border-green-900/50{% endif %}">
-                                        {{ tech.duration }} hrs
-                                    </span>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="px-6 py-8 text-center text-gray-600 italic">
-                                    No technicians are currently clocked onto a task.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<head>
+    <meta charset="UTF-8" />
+    <title>Foreman Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .ro-row:hover {
+            background-color: #1f2937;
+            cursor: pointer;
+        }
 
-            <div class="flex justify-between items-end mb-6">
-                <div class="flex gap-6 border-b border-gray-800">
-                    <button
-                        onclick="switchTab('active')"
-                        id="tab-active"
-                        class="pb-2 text-sm font-bold uppercase tracking-widest tab-active"
-                    >
-                        Repair Orders
-                    </button>
-                    <button
-                        onclick="switchTab('archive')"
-                        id="tab-archive"
-                        class="pb-2 text-sm font-bold uppercase tracking-widest tab-inactive"
-                    >
-                        Archives
-                    </button>
-                </div>
-                <div class="relative w-1/3">
-                    <input
-                        type="text"
-                        id="searchInput"
-                        onkeyup="filterTable()"
-                        placeholder="Search RO, Tech, Unit, VIN..."
-                        class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:border-blue-500 outline-none text-white"
-                    />
-                    <svg
-                        class="w-4 h-4 text-gray-500 absolute right-3 top-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        ></path>
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* Blue-500 */
+        .tab-inactive {
+            color: #6b7280;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-950 text-gray-100 min-h-screen" onclick="closeMenu(event)">
+    <nav
+        class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-lg">
+        <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-black italic text-blue-500 tracking-wider">
+                SHOP<span class="text-white">MANAGER</span>
+            </h1>
+            <span class="bg-gray-800 text-xs px-2 py-1 rounded text-gray-400 font-bold uppercase">{{ user.username }}
+                ({{ user.role }})</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="/new-ro"
+                class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold text-sm uppercase transition">+
+                New RO</a>
+            <div class="relative">
+                <button onclick="toggleMenu(event)"
+                    class="bg-gray-800 text-gray-400 p-2 rounded border border-gray-700 hover:text-white hover:border-gray-500 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
+                </button>
+                <div id="navMenu"
+                    class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 overflow-hidden z-50">
+                    <div class="py-1">
+                        <a href="/customers" onclick="event.stopPropagation()"
+                            class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50">🏢
+                            Customers</a>
+                        <a href="/shop-management" onclick="event.stopPropagation()"
+                            class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50">⚙️
+                            Admin Panel</a>
+                        <a href="/logout" onclick="event.stopPropagation()"
+                            class="block px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 font-bold">🚪
+                            Log Out</a>
+                    </div>
                 </div>
             </div>
+        </div>
+    </nav>
 
-            <div
-                id="active-view"
-                class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl"
-            >
-                <table class="w-full text-left text-sm">
-                    <thead
-                        class="bg-gray-800 text-xs uppercase text-gray-500 font-bold"
-                    >
-                        <tr>
-                            <th class="px-6 py-4">RO #</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Unit / VIN</th>
-                            <th class="px-6 py-4">Customer</th>
-                            <th class="px-6 py-4">Assigned Tech</th>
-                            <th class="px-6 py-4 text-right">Date In</th>
-                        </tr>
-                    </thead>
-                    <tbody id="active-body" class="divide-y divide-gray-800">
-                        {% for ro in active_ros %}
-                        <tr class="ro-row group">
-                            <td
-                                class="px-6 py-4 font-mono text-blue-400 font-bold"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {{ ro.ro_number }}
-                            </td>
+    <main class="max-w-7xl mx-auto p-6">
 
-                            <td
-                                class="px-6 py-4"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {% if ro.status == 'Open' %}
-                                <span
-                                    class="bg-blue-900/30 text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-900/50"
-                                    >OPEN</span
-                                >
-                                {% elif ro.status == 'Work in Progress' %}
-                                <span
-                                    class="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50 animate-pulse"
-                                    >IN PROGRESS</span
-                                >
-                                {% elif ro.status == 'Complete' %}
-                                <span
-                                    class="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs font-bold border border-green-900/50"
-                                    >COMPLETE</span
-                                >
-                                {% else %}
-                                <span
-                                    class="bg-gray-800 text-gray-400 px-2 py-1 rounded text-xs font-bold"
-                                    >{{ ro.status }}</span
-                                >
-                                {% endif %}
-                            </td>
-
-                            <td
-                                class="px-6 py-4"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                <div class="font-bold text-white">
-                                    {{ ro.unit_number }}
-                                </div>
-                                <div class="text-xs text-gray-500">
-                                    {{ ro.make }} {{ ro.model }}
-                                </div>
-                                <div
-                                    class="text-[10px] font-mono text-gray-600"
-                                >
-                                    {{ ro.vin }}
-                                </div>
-                            </td>
-                            <td
-                                class="px-6 py-4 font-medium text-gray-300"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {{ ro.customer_name }}
-                            </td>
-
-                            <td class="px-6 py-4">
-                                <form
-                                    action="/api/assign-tech"
-                                    method="POST"
-                                    onclick="event.stopPropagation()"
-                                >
-                                    <input
-                                        type="hidden"
-                                        name="ro_id"
-                                        value="{{ ro.id }}"
-                                    />
-                                    <select
-                                        name="tech_id"
-                                        onchange="this.form.submit()"
-                                        class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:border-blue-500 outline-none hover:bg-gray-700 cursor-pointer text-gray-300"
-                                    >
-                                        <option
-                                            value="-1"
-                                            class="text-gray-500"
-                                        >
-                                            -- Unassigned --
-                                        </option>
-                                        {% for tech in techs %}
-                                        <option
-                                            value="{{ tech.id }}"
-                                            {% if ro.tech_id == tech.id %}selected{% endif %}
-                                        >
-                                            {{ tech.username }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </form>
-                            </td>
-
-                            <td
-                                class="px-6 py-4 text-right text-gray-500 text-xs"
-                                onclick="window.location.href='/ro/{{ro.id}}'"
-                            >
-                                {{ ro.created_at.strftime('%Y-%m-%d') }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% if not active_ros %}
-                <div class="p-8 text-center text-gray-600 italic">
-                    No active repair orders found.
-                </div>
-                {% endif %}
+        <div class="mb-10">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <h2 class="text-sm font-black uppercase tracking-widest text-gray-400">Active Shop Floor</h2>
             </div>
 
-            <div
-                id="archive-view"
-                class="hidden bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl opacity-75"
-            >
+            <div class="bg-gray-900 rounded-xl border border-blue-900/30 overflow-hidden shadow-2xl">
                 <table class="w-full text-left text-sm">
-                    <thead
-                        class="bg-gray-800 text-xs uppercase text-gray-500 font-bold"
-                    >
+                    <thead class="bg-gray-800/50 text-xs uppercase text-gray-500 font-bold">
                         <tr>
-                            <th class="px-6 py-4">RO #</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Unit / VIN</th>
-                            <th class="px-6 py-4">Customer</th>
-                            <th class="px-6 py-4">Tech</th>
-                            <th class="px-6 py-4 text-right">Date Closed</th>
+                            <th class="px-6 py-4">Technician</th>
+                            <th class="px-6 py-4">Current RO</th>
+                            <th class="px-6 py-4">Task</th>
+                            <th class="px-6 py-4 text-right">Time on Task</th>
                         </tr>
                     </thead>
-                    <tbody id="archive-body" class="divide-y divide-gray-800">
-                        {% for ro in archived_ros %}
-                        <tr
-                            class="ro-row hover:bg-gray-800/50 transition"
-                            onclick="window.location.href='/ro/{{ro.id}}'"
-                        >
-                            <td
-                                class="px-6 py-4 font-mono text-gray-500 font-bold"
-                            >
-                                {{ ro.ro_number }}
+                    <tbody class="divide-y divide-gray-800">
+                        {% for tech in active_techs %}
+                        <tr class="hover:bg-gray-800/30 transition">
+                            <td class="px-6 py-4 font-bold text-white">{{ tech.tech_name }}</td>
+                            <td class="px-6 py-4 font-mono text-blue-400">
+                                <a href="/ro/{{ tech.ro_number }}" class="hover:underline">#{{ tech.ro_number }}</a>
                             </td>
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4 text-gray-300">{{ tech.job_title }}</td>
+                            <td class="px-6 py-4 text-right">
                                 <span
-                                    class="bg-gray-800 text-gray-500 px-2 py-1 rounded text-xs font-bold"
-                                    >BILLED</span
-                                >
+                                    class="px-2 py-1 rounded text-xs font-bold border {% if tech.duration > 8 %}bg-red-900/30 text-red-400 border-red-900/50{% else %}bg-green-900/30 text-green-400 border-green-900/50{% endif %}">
+                                    {{ tech.duration }} hrs
+                                </span>
                             </td>
-                            <td class="px-6 py-4">
-                                <div class="font-bold text-gray-400">
-                                    {{ ro.unit_number }}
-                                </div>
-                                <div
-                                    class="text-[10px] font-mono text-gray-600"
-                                >
-                                    {{ ro.vin }}
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 text-gray-500">
-                                {{ ro.customer_name }}
-                            </td>
-                            <td class="px-6 py-4 text-gray-500">
-                                {{ ro.tech_name or 'Unassigned' }}
-                            </td>
-                            <td
-                                class="px-6 py-4 text-right text-gray-600 text-xs"
-                            >
-                                {{ ro.completed_at }}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-gray-600 italic">
+                                No technicians are currently clocked onto a task.
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </main>
+        </div>
 
-        <script>
-            function switchTab(tab) {
-                const activeView = document.getElementById("active-view");
-                const archiveView = document.getElementById("archive-view");
-                const activeTab = document.getElementById("tab-active");
-                const archiveTab = document.getElementById("tab-archive");
+        <div class="flex justify-between items-end mb-6">
+            <div class="flex gap-6 border-b border-gray-800">
+                <button onclick="switchTab('active')" id="tab-active"
+                    class="pb-2 text-sm font-bold uppercase tracking-widest tab-active">
+                    Repair Orders
+                </button>
+                <button onclick="switchTab('archive')" id="tab-archive"
+                    class="pb-2 text-sm font-bold uppercase tracking-widest tab-inactive">
+                    Archives
+                </button>
+            </div>
+            <div class="relative w-1/3">
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search RO, Tech, Unit, VIN..."
+                    class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:border-blue-500 outline-none text-white" />
+                <svg class="w-4 h-4 text-gray-500 absolute right-3 top-3" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
 
-                if (tab === "active") {
-                    activeView.classList.remove("hidden");
-                    archiveView.classList.add("hidden");
-                    activeTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
-                    archiveTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
-                } else {
-                    activeView.classList.add("hidden");
-                    archiveView.classList.remove("hidden");
-                    activeTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
-                    archiveTab.className =
-                        "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
+        <div id="active-view" class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-800 text-xs uppercase text-gray-500 font-bold">
+                    <tr>
+                        <th class="px-6 py-4">RO #</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Unit / VIN</th>
+                        <th class="px-6 py-4">Customer</th>
+                        <th class="px-6 py-4">Assigned Tech</th>
+                        <th class="px-6 py-4 text-right">Date In</th>
+                    </tr>
+                </thead>
+                <tbody id="active-body" class="divide-y divide-gray-800">
+                    {% for ro in active_ros %}
+                    <tr class="ro-row group">
+                        <td class="px-6 py-4 font-mono text-blue-400 font-bold"
+                            onclick="window.location.href='/ro/{{ro.id}}'">
+                            {{ ro.ro_number }}
+                        </td>
+
+                        <td class="px-6 py-4" onclick="window.location.href='/ro/{{ro.id}}'">
+                            {% if ro.status == 'Open' %}
+                            <span
+                                class="bg-blue-900/30 text-blue-400 px-2 py-1 rounded text-xs font-bold border border-blue-900/50">OPEN</span>
+                            {% elif ro.status == 'Work in Progress' %}
+                            <span
+                                class="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs font-bold border border-yellow-900/50 animate-pulse">IN
+                                PROGRESS</span>
+                            {% elif ro.status == 'Complete' %}
+                            <span
+                                class="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs font-bold border border-green-900/50">COMPLETE</span>
+                            {% else %}
+                            <span class="bg-gray-800 text-gray-400 px-2 py-1 rounded text-xs font-bold">{{ ro.status
+                                }}</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4" onclick="window.location.href='/ro/{{ro.id}}'">
+                            <div class="font-bold text-white">
+                                {{ ro.unit_number }}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                {{ ro.make }} {{ ro.model }}
+                            </div>
+                            <div class="text-[10px] font-mono text-gray-600">
+                                {{ ro.vin }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-gray-300" onclick="window.location.href='/ro/{{ro.id}}'">
+                            {{ ro.customer_name }}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <form action="/api/assign-tech" method="POST" onclick="event.stopPropagation()">
+                                <input type="hidden" name="ro_id" value="{{ ro.id }}" />
+                                <select name="tech_id" onchange="this.form.submit()"
+                                    class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:border-blue-500 outline-none hover:bg-gray-700 cursor-pointer text-gray-300">
+                                    <option value="-1" class="text-gray-500">
+                                        -- Unassigned --
+                                    </option>
+                                    {% for tech in techs %}
+                                    <option value="{{ tech.id }}" {% if ro.tech_id==tech.id %}selected{% endif %}>
+                                        {{ tech.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </td>
+
+                        <td class="px-6 py-4 text-right text-gray-500 text-xs"
+                            onclick="window.location.href='/ro/{{ro.id}}'">
+                            {{ ro.created_at.strftime('%Y-%m-%d') }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not active_ros %}
+            <div class="p-8 text-center text-gray-600 italic">
+                No active repair orders found.
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="archive-view"
+            class="hidden bg-gray-900 rounded-xl border border-gray-800 overflow-hidden shadow-2xl opacity-75">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-800 text-xs uppercase text-gray-500 font-bold">
+                    <tr>
+                        <th class="px-6 py-4">RO #</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4">Unit / VIN</th>
+                        <th class="px-6 py-4">Customer</th>
+                        <th class="px-6 py-4">Tech</th>
+                        <th class="px-6 py-4 text-right">Date Closed</th>
+                    </tr>
+                </thead>
+                <tbody id="archive-body" class="divide-y divide-gray-800">
+                    {% for ro in archived_ros %}
+                    <tr class="ro-row hover:bg-gray-800/50 transition" onclick="window.location.href='/ro/{{ro.id}}'">
+                        <td class="px-6 py-4 font-mono text-gray-500 font-bold">
+                            {{ ro.ro_number }}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="bg-gray-800 text-gray-500 px-2 py-1 rounded text-xs font-bold">BILLED</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-gray-400">
+                                {{ ro.unit_number }}
+                            </div>
+                            <div class="text-[10px] font-mono text-gray-600">
+                                {{ ro.vin }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-gray-500">
+                            {{ ro.customer_name }}
+                        </td>
+                        <td class="px-6 py-4 text-gray-500">
+                            {{ ro.tech_name or 'Unassigned' }}
+                        </td>
+                        <td class="px-6 py-4 text-right text-gray-600 text-xs">
+                            {{ ro.completed_at }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        function switchTab(tab) {
+            const activeView = document.getElementById("active-view");
+            const archiveView = document.getElementById("archive-view");
+            const activeTab = document.getElementById("tab-active");
+            const archiveTab = document.getElementById("tab-archive");
+
+            if (tab === "active") {
+                activeView.classList.remove("hidden");
+                archiveView.classList.add("hidden");
+                activeTab.className =
+                    "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
+                archiveTab.className =
+                    "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
+            } else {
+                activeView.classList.add("hidden");
+                archiveView.classList.remove("hidden");
+                activeTab.className =
+                    "pb-2 text-sm font-bold uppercase tracking-widest tab-inactive";
+                archiveTab.className =
+                    "pb-2 text-sm font-bold uppercase tracking-widest tab-active";
+            }
+        }
+
+        function filterTable() {
+            const input = document.getElementById("searchInput");
+            const filter = input.value.toUpperCase();
+
+            function filterBody(bodyId) {
+                const body = document.getElementById(bodyId);
+                if (!body) return;
+                const rows = body.getElementsByTagName("tr");
+                for (let i = 0; i < rows.length; i++) {
+                    let text = rows[i].textContent || rows[i].innerText;
+                    rows[i].style.display =
+                        text.toUpperCase().indexOf(filter) > -1
+                            ? ""
+                            : "none";
                 }
             }
 
-            function filterTable() {
-                const input = document.getElementById("searchInput");
-                const filter = input.value.toUpperCase();
+            filterBody("active-body");
+            filterBody("archive-body");
+        }
 
-                function filterBody(bodyId) {
-                    const body = document.getElementById(bodyId);
-                    if (!body) return;
-                    const rows = body.getElementsByTagName("tr");
-                    for (let i = 0; i < rows.length; i++) {
-                        let text = rows[i].textContent || rows[i].innerText;
-                        rows[i].style.display =
-                            text.toUpperCase().indexOf(filter) > -1
-                                ? ""
-                                : "none";
-                    }
-                }
+        function toggleMenu(event) {
+            event.stopPropagation();
+            document.getElementById("navMenu").classList.toggle("hidden");
+        }
+        function closeMenu(event) {
+            document.getElementById("navMenu").classList.add("hidden");
+        }
+    </script>
+</body>
 
-                filterBody("active-body");
-                filterBody("archive-body");
-            }
-        </script>
-    </body>
 </html>

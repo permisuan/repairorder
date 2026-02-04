@@ -1,458 +1,330 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>New RO Wizard</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            input,
-            select {
-                font-size: 16px !important;
-            }
 
-            /* GLOBAL: REMOVE UP/DOWN ARROWS */
-            input::-webkit-outer-spin-button,
-            input::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-            input[type="number"] {
-                -moz-appearance: textfield;
-            }
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New RO Wizard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input,
+        select {
+            font-size: 16px !important;
+        }
 
-            /* Disabled inputs style */
-            input:disabled {
-                background-color: #1f2937;
-                color: #9ca3af;
-                border-color: #374151;
-                cursor: not-allowed;
-            }
-        </style>
-    </head>
-    <body
-        class="bg-gray-950 text-gray-100 min-h-screen p-4 flex justify-center"
-    >
-        <div
-            class="w-full max-w-2xl bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col"
-        >
-            <div
-                class="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center"
-            >
-                <h1 class="text-xl font-bold italic text-blue-500">
-                    CREATE<span class="text-white">RO</span>
-                </h1>
-                <a
-                    href="/"
-                    class="text-xs text-gray-400 font-bold uppercase hover:text-white"
-                    >Cancel</a
-                >
+        /* GLOBAL: REMOVE UP/DOWN ARROWS */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        /* Disabled inputs style */
+        input:disabled {
+            background-color: #1f2937;
+            color: #9ca3af;
+            border-color: #374151;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-950 text-gray-100 min-h-screen p-4 flex justify-center" onclick="closeMenu(event)">
+    <div
+        class="w-full max-w-2xl bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col">
+        <div class="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
+            <h1 class="text-xl font-bold italic text-blue-500">
+                CREATE<span class="text-white">RO</span>
+            </h1>
+            <div class="flex items-center gap-3">
+                <a href="/" class="text-xs text-gray-400 font-bold uppercase hover:text-white">Cancel</a>
+                <div class="relative">
+                    <button onclick="toggleMenu(event)"
+                        class="bg-gray-700 text-gray-400 p-2 rounded border border-gray-600 hover:text-white hover:border-gray-500 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <div id="navMenu"
+                        class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 overflow-hidden z-50">
+                        <div class="py-1">
+                            <a href="/customers" onclick="event.stopPropagation()"
+                                class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50">🏢
+                                Customers</a>
+                            <a href="/shop-management" onclick="event.stopPropagation()"
+                                class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50">⚙️
+                                Admin Panel</a>
+                            <a href="/logout" onclick="event.stopPropagation()"
+                                class="block px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 font-bold">🚪
+                                Log Out</a>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
 
-            <div id="step1" class="p-6">
-                <h2
-                    class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4"
-                >
-                    Step 1: Find Vehicle
-                </h2>
+        <div id="step1" class="p-6">
+            <h2 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">
+                Step 1: Find Vehicle
+            </h2>
 
-                <div class="flex space-x-4 mb-4 border-b border-gray-700 pb-2">
-                    <button
-                        onclick="setSearchMode('vin')"
-                        id="btnVin"
-                        class="text-blue-400 font-bold text-sm border-b-2 border-blue-500 pb-2"
-                    >
-                        By VIN (Last 8)
-                    </button>
-                    <button
-                        onclick="setSearchMode('unit')"
-                        id="btnUnit"
-                        class="text-gray-500 font-bold text-sm pb-2 hover:text-white"
-                    >
-                        By Unit #
-                    </button>
+            <p class="text-xs text-gray-600 mb-4">Enter any combination of fields to search. VIN requires at least 6
+                characters.</p>
+
+            <form id="searchForm" onsubmit="event.preventDefault(); searchVehicle();" class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">VIN (min 6
+                        chars)</label>
+                    <input type="text" id="searchVin" placeholder="Enter last 6-17 digits of VIN..."
+                        class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 font-mono uppercase focus:border-blue-500 outline-none" />
                 </div>
 
-                <form
-                    id="searchForm"
-                    onsubmit="
-                        event.preventDefault();
-                        searchVehicle();
-                    "
-                    class="space-y-4"
-                >
-                    <div id="searchVinGroup">
-                        <input
-                            type="text"
-                            id="searchVin"
-                            placeholder="Enter Last 8 of VIN..."
-                            class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 font-mono uppercase focus:border-blue-500 outline-none"
-                        />
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Unit
+                            Number</label>
+                        <input type="text" id="searchUnit" placeholder="Unit #"
+                            class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 uppercase outline-none focus:border-blue-500" />
                     </div>
-                    <div id="searchUnitGroup" class="hidden grid-cols-2 gap-2">
-                        <input
-                            type="text"
-                            id="searchUnit"
-                            placeholder="Unit Number"
-                            class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 uppercase outline-none"
-                        />
-                        <select
-                            id="searchCust"
-                            class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 outline-none"
-                        >
-                            <option value="" selected disabled>
-                                Select Customer...
-                            </option>
+                    <div>
+                        <label
+                            class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">Customer</label>
+                        <select id="searchCust"
+                            class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 outline-none focus:border-blue-500">
+                            <option value="">Any Customer</option>
                             {% for c in customers %}
                             <option value="{{ c.id }}">{{ c.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <button
-                        type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold uppercase"
-                    >
-                        Search
-                    </button>
-                </form>
+                </div>
 
-                <div id="searchResults" class="mt-4"></div>
-            </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold uppercase">
+                    Search
+                </button>
+            </form>
 
-            <form
-                action="/submit-ro"
-                method="post"
-                id="step2"
-                class="hidden flex-col flex-grow"
-                onsubmit="return validateForm();"
-            >
-                <div class="p-6 space-y-4 border-t border-gray-800">
-                    <h2
-                        class="text-sm font-bold text-green-500 uppercase tracking-widest mb-2"
-                    >
-                        Step 2: Vehicle & Job Details
-                    </h2>
+            <div id="searchResults" class="mt-4"></div>
+        </div>
 
-                    <input type="hidden" name="vehicle_id" id="v_id" />
-                    <input
-                        type="hidden"
-                        name="is_new"
-                        id="v_is_new"
-                        value="false"
-                    />
+        <form action="/submit-ro" method="post" id="step2" class="hidden flex-col flex-grow"
+            onsubmit="return validateForm();">
+            <div class="p-6 space-y-4 border-t border-gray-800">
+                <h2 class="text-sm font-bold text-green-500 uppercase tracking-widest mb-2">
+                    Step 2: Vehicle & Job Details
+                </h2>
 
-                    <div
-                        id="existingVehicleInfo"
-                        class="hidden bg-gray-800/50 p-4 rounded-xl border border-gray-700 mb-4"
-                    >
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                                <span
-                                    class="block text-gray-500 text-[10px] uppercase font-bold"
-                                    >Unit #</span
-                                >
-                                <span
-                                    class="text-white font-bold text-lg"
-                                    id="txt_unit"
-                                ></span>
-                            </div>
-                            <div>
-                                <span
-                                    class="block text-gray-500 text-[10px] uppercase font-bold"
-                                    >VIN</span
-                                >
-                                <span
-                                    class="text-emerald-400 font-mono"
-                                    id="txt_vin"
-                                ></span>
-                            </div>
-                            <div>
-                                <span
-                                    class="block text-gray-500 text-[10px] uppercase font-bold"
-                                    >Vehicle</span
-                                >
-                                <span
-                                    class="text-gray-300"
-                                    id="txt_desc"
-                                ></span>
-                            </div>
-                            <div>
-                                <span
-                                    class="block text-gray-500 text-[10px] uppercase font-bold"
-                                    >Engine</span
-                                >
-                                <span
-                                    class="text-gray-300"
-                                    id="txt_engine"
-                                ></span>
-                            </div>
+                <input type="hidden" name="vehicle_id" id="v_id" />
+                <input type="hidden" name="is_new" id="v_is_new" value="false" />
+
+                <div id="existingVehicleInfo" class="hidden bg-gray-800/50 p-4 rounded-xl border border-gray-700 mb-4">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="block text-gray-500 text-[10px] uppercase font-bold">Unit #</span>
+                            <span class="text-white font-bold text-lg" id="txt_unit"></span>
+                        </div>
+                        <div>
+                            <span class="block text-gray-500 text-[10px] uppercase font-bold">VIN</span>
+                            <span class="text-emerald-400 font-mono" id="txt_vin"></span>
+                        </div>
+                        <div>
+                            <span class="block text-gray-500 text-[10px] uppercase font-bold">Vehicle</span>
+                            <span class="text-gray-300" id="txt_desc"></span>
+                        </div>
+                        <div>
+                            <span class="block text-gray-500 text-[10px] uppercase font-bold">Engine</span>
+                            <span class="text-gray-300" id="txt_engine"></span>
                         </div>
                     </div>
+                </div>
 
-                    <div
-                        id="newVehicleForm"
-                        class="hidden space-y-3 bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 mb-4"
-                    >
-                        <div class="flex justify-between items-center mb-1">
-                            <h3
-                                class="text-xs font-bold text-blue-400 uppercase"
-                            >
-                                New Vehicle Setup
-                            </h3>
-                        </div>
+                <div id="newVehicleForm"
+                    class="hidden space-y-3 bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="text-xs font-bold text-blue-400 uppercase">
+                            New Vehicle Setup
+                        </h3>
+                    </div>
 
-                        <div class="grid grid-cols-1 gap-2">
-                            <div>
-                                <label
-                                    class="text-[10px] text-gray-500 uppercase"
-                                    >Customer</label
-                                >
-                                <select
-                                    name="new_cust_id"
-                                    class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                                >
-                                    <option value="" selected disabled>
-                                        Select Customer...
-                                    </option>
-                                    {% for c in customers %}
-                                    <option value="{{ c.id }}">
-                                        {{ c.name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label
-                                    class="text-[10px] text-gray-500 uppercase"
-                                    >Full VIN (17 Char)</label
-                                >
-                                <div class="relative">
-                                    <input
-                                        type="text"
-                                        id="new_vin"
-                                        name="new_vin"
-                                        placeholder="ENTER VIN"
-                                        class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 font-mono text-sm uppercase pr-24 focus:border-blue-500 outline-none"
-                                    />
-                                    <button
-                                        type="button"
-                                        onclick="decodeNewVin()"
-                                        class="absolute right-1 top-1 bottom-1 bg-blue-600 hover:bg-blue-500 text-white px-3 rounded font-bold text-[10px] uppercase tracking-wider"
-                                    >
-                                        Decode
-                                    </button>
-                                </div>
-                                <p
-                                    class="text-[10px] text-red-400 mt-1 hidden"
-                                    id="vinError"
-                                >
-                                    Invalid VIN: Cannot contain I, O, or Q.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-3 gap-2">
-                            <div>
-                                <label
-                                    class="text-[10px] text-gray-500 uppercase"
-                                    >Year</label
-                                ><input
-                                    type="number"
-                                    id="new_year"
-                                    name="new_year"
-                                    class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                                />
-                            </div>
-                            <div class="col-span-2">
-                                <label
-                                    class="text-[10px] text-gray-500 uppercase"
-                                    >Make</label
-                                ><input
-                                    type="text"
-                                    id="new_make"
-                                    name="new_make"
-                                    class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label
-                                    class="text-[10px] text-gray-500 uppercase"
-                                    >Model</label
-                                ><input
-                                    type="text"
-                                    id="new_model"
-                                    name="new_model"
-                                    class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label
-                                    class="text-[10px] text-gray-500 uppercase"
-                                    >Engine</label
-                                ><input
-                                    type="text"
-                                    id="new_engine"
-                                    name="new_engine"
-                                    class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                                />
-                            </div>
+                    <div class="grid grid-cols-1 gap-2">
+                        <div>
+                            <label class="text-[10px] text-gray-500 uppercase">Customer</label>
+                            <select name="new_cust_id"
+                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none">
+                                <option value="" selected disabled>
+                                    Select Customer...
+                                </option>
+                                {% for c in customers %}
+                                <option value="{{ c.id }}">
+                                    {{ c.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
 
                         <div>
-                            <label class="text-[10px] text-gray-500 uppercase"
-                                >Unit #</label
-                            ><input
-                                type="text"
-                                name="new_unit"
-                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                            />
+                            <label class="text-[10px] text-gray-500 uppercase">Full VIN (17 Char)</label>
+                            <div class="relative">
+                                <input type="text" id="new_vin" name="new_vin" placeholder="ENTER VIN"
+                                    class="w-full p-3 bg-gray-800 rounded-lg border border-gray-700 font-mono text-sm uppercase pr-24 focus:border-blue-500 outline-none" />
+                                <button type="button" onclick="decodeNewVin()"
+                                    class="absolute right-1 top-1 bottom-1 bg-blue-600 hover:bg-blue-500 text-white px-3 rounded font-bold text-[10px] uppercase tracking-wider">
+                                    Decode
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-red-400 mt-1 hidden" id="vinError">
+                                Invalid VIN: Cannot contain I, O, or Q.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] text-gray-500 uppercase">Year</label><input type="number"
+                                id="new_year" name="new_year"
+                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none" />
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-[10px] text-gray-500 uppercase">Make</label><input type="text"
+                                id="new_make" name="new_make"
+                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none" />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="text-[10px] text-gray-500 uppercase"
-                                >Current Miles</label
-                            ><input
-                                type="number"
-                                name="mileage"
-                                id="v_miles"
-                                required
-                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm font-bold text-white outline-none"
-                            />
+                            <label class="text-[10px] text-gray-500 uppercase">Model</label><input type="text"
+                                id="new_model" name="new_model"
+                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none" />
                         </div>
                         <div>
-                            <label class="text-[10px] text-gray-500 uppercase"
-                                >Current Hours</label
-                            ><input
-                                type="number"
-                                step="0.1"
-                                name="hours"
-                                id="v_hours"
-                                required
-                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm font-bold text-white outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-gray-500 uppercase"
-                                >Assign Tech (Optional)</label
-                            >
-                            <select
-                                name="assigned_tech_id"
-                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none"
-                            >
-                                <option value="" selected>
-                                    -- Unassigned --
-                                </option>
-                                {% if techs %} {% for t in techs %}
-                                <option value="{{ t.id }}">
-                                    {{ t.username }}
-                                </option>
-                                {% endfor %} {% endif %}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] text-gray-500 uppercase"
-                                >Tag / Hat #</label
-                            >
-                            <input
-                                type="text"
-                                name="tag_number"
-                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm font-bold text-white outline-none"
-                            />
+                            <label class="text-[10px] text-gray-500 uppercase">Engine</label><input type="text"
+                                id="new_engine" name="new_engine"
+                                class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none" />
                         </div>
                     </div>
 
-                    <div class="pt-4 border-t border-gray-800">
-                        <div class="flex justify-between items-center mb-2">
-                            <label
-                                class="text-[10px] font-bold text-gray-400 uppercase"
-                                >Job Lines</label
-                            >
-                            <button
-                                type="button"
-                                onclick="addJobLine()"
-                                class="text-xs bg-gray-800 px-2 py-1 rounded text-blue-400 border border-blue-500/30"
-                            >
-                                + Add Line
-                            </button>
-                        </div>
-                        <div id="jobLinesContainer" class="space-y-3"></div>
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase">Unit #</label><input type="text"
+                            name="new_unit"
+                            class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none" />
                     </div>
                 </div>
 
-                <div
-                    class="p-4 bg-gray-800 mt-auto flex justify-between items-center"
-                >
-                    <div class="text-xs text-gray-500">
-                        RO #: <span class="text-white font-mono">Auto</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase">Current Miles</label><input type="number"
+                            name="mileage" id="v_miles" required
+                            class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm font-bold text-white outline-none" />
                     </div>
-                    <button
-                        type="submit"
-                        class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-black uppercase shadow-lg"
-                    >
-                        Create RO
-                    </button>
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase">Current Hours</label><input type="number"
+                            step="0.1" name="hours" id="v_hours" required
+                            class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm font-bold text-white outline-none" />
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase">Assign Tech (Optional)</label>
+                        <select name="assigned_tech_id"
+                            class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm outline-none">
+                            <option value="" selected>
+                                -- Unassigned --
+                            </option>
+                            {% if techs %} {% for t in techs %}
+                            <option value="{{ t.id }}">
+                                {{ t.username }}
+                            </option>
+                            {% endfor %} {% endif %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-500 uppercase">Tag / Hat #</label>
+                        <input type="text" name="tag_number"
+                            class="w-full p-2 bg-gray-800 rounded border border-gray-700 text-sm font-bold text-white outline-none" />
+                    </div>
                 </div>
-            </form>
-        </div>
 
-        <script>
-            // --- HELPER: CHECK VIN ---
-            function isValidVin(vin) {
-                const illegalChars = /[IOQioq]/;
-                return !illegalChars.test(vin);
-            }
+                <div class="pt-4 border-t border-gray-800">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Job Lines</label>
+                        <button type="button" onclick="addJobLine()"
+                            class="text-xs bg-gray-800 px-2 py-1 rounded text-blue-400 border border-blue-500/30">
+                            + Add Line
+                        </button>
+                    </div>
+                    <div id="jobLinesContainer" class="space-y-3"></div>
+                </div>
+            </div>
 
-            // --- SEARCH LOGIC ---
-            let searchMode = "vin";
-            function setSearchMode(mode) {
-                searchMode = mode;
-                document.getElementById("searchVinGroup").style.display =
-                    mode === "vin" ? "block" : "none";
-                document.getElementById("searchUnitGroup").style.display =
-                    mode === "unit" ? "grid" : "none";
-                document.getElementById("btnVin").className =
-                    mode === "vin"
-                        ? "text-blue-400 font-bold text-sm border-b-2 border-blue-500 pb-2"
-                        : "text-gray-500 font-bold text-sm pb-2 hover:text-white";
-                document.getElementById("btnUnit").className =
-                    mode === "unit"
-                        ? "text-blue-400 font-bold text-sm border-b-2 border-blue-500 pb-2"
-                        : "text-gray-500 font-bold text-sm pb-2 hover:text-white";
-            }
+            <div class="p-4 bg-gray-800 mt-auto flex justify-between items-center">
+                <div class="text-xs text-gray-500">
+                    RO #: <span class="text-white font-mono">Auto</span>
+                </div>
+                <button type="submit"
+                    class="bg-green-600 hover:bg-green-500 px-6 py-3 rounded-xl font-black uppercase shadow-lg">
+                    Create RO
+                </button>
+            </div>
+        </form>
+    </div>
 
-            async function searchVehicle() {
-                let query = "";
-                if (searchMode === "vin") {
-                    const v = document.getElementById("searchVin").value;
-                    if (!isValidVin(v)) {
-                        alert("Search Error: VIN cannot contain I, O, or Q.");
-                        return;
-                    }
-                    query = "vin=" + v;
-                } else {
-                    query =
-                        "unit=" +
-                        document.getElementById("searchUnit").value +
-                        "&cust=" +
-                        document.getElementById("searchCust").value;
+    <script>
+        // --- HELPER: CHECK VIN ---
+        function isValidVin(vin) {
+            const illegalChars = /[IOQioq]/;
+            return !illegalChars.test(vin);
+        }
+
+        // --- SEARCH LOGIC ---
+        let searchMode = "vin";
+        function setSearchMode(mode) {
+            searchMode = mode;
+            document.getElementById("searchVinGroup").style.display =
+                mode === "vin" ? "block" : "none";
+            document.getElementById("searchUnitGroup").style.display =
+                mode === "unit" ? "grid" : "none";
+            document.getElementById("btnVin").className =
+                mode === "vin"
+                    ? "text-blue-400 font-bold text-sm border-b-2 border-blue-500 pb-2"
+                    : "text-gray-500 font-bold text-sm pb-2 hover:text-white";
+            document.getElementById("btnUnit").className =
+                mode === "unit"
+                    ? "text-blue-400 font-bold text-sm border-b-2 border-blue-500 pb-2"
+                    : "text-gray-500 font-bold text-sm pb-2 hover:text-white";
+        }
+
+        async function searchVehicle() {
+            let query = "";
+            if (searchMode === "vin") {
+                const v = document.getElementById("searchVin").value;
+                if (!isValidVin(v)) {
+                    alert("Search Error: VIN cannot contain I, O, or Q.");
+                    return;
                 }
+                query = "vin=" + v;
+            } else {
+                query =
+                    "unit=" +
+                    document.getElementById("searchUnit").value +
+                    "&cust=" +
+                    document.getElementById("searchCust").value;
+            }
 
-                const btn = document.querySelector("#searchForm button");
-                btn.innerText = "Searching...";
+            const btn = document.querySelector("#searchForm button");
+            btn.innerText = "Searching...";
 
-                const res = await fetch("/api/search-vehicle?" + query);
-                const data = await res.json();
-                btn.innerText = "Search";
+            const res = await fetch("/api/search-vehicle?" + query);
+            const data = await res.json();
+            btn.innerText = "Search";
 
-                const resDiv = document.getElementById("searchResults");
-                if (data.found) {
-                    resDiv.innerHTML = `
+            const resDiv = document.getElementById("searchResults");
+            if (data.found) {
+                resDiv.innerHTML = `
                     <div class="bg-emerald-900/30 border border-emerald-500/50 p-3 rounded-lg flex justify-between items-center">
                         <div>
                             <div class="font-bold text-emerald-400">${data.vehicle.year} ${data.vehicle.make}</div>
@@ -461,122 +333,122 @@
                         <button onclick='selectVehicle(${JSON.stringify(data.vehicle)})' type="button" class="bg-emerald-600 px-3 py-1 rounded text-xs font-bold uppercase">Use</button>
                     </div>
                 `;
-                } else {
-                    resDiv.innerHTML = `
+            } else {
+                resDiv.innerHTML = `
                     <div class="text-center py-4">
                         <p class="text-gray-500 text-sm mb-2">Vehicle not found.</p>
                         <button onclick="startNewVehicle()" type="button" class="bg-blue-600 px-4 py-2 rounded font-bold text-xs uppercase">Create New Vehicle</button>
                     </div>
                 `;
-                }
+            }
+        }
+
+        function selectVehicle(v) {
+            document.getElementById("step1").style.display = "none";
+            document.getElementById("step2").style.display = "flex";
+
+            document
+                .getElementById("existingVehicleInfo")
+                .classList.remove("hidden");
+            document
+                .getElementById("newVehicleForm")
+                .classList.add("hidden");
+
+            document.getElementById("txt_unit").innerText = v.unit_number;
+            document.getElementById("txt_vin").innerText = v.vin;
+            document.getElementById("txt_desc").innerText =
+                `${v.year} ${v.make} ${v.model}`;
+            document.getElementById("txt_engine").innerText =
+                v.engine_type || "N/A";
+
+            document.getElementById("v_id").value = v.id;
+            document.getElementById("v_miles").value = v.mileage;
+            document.getElementById("v_hours").value = v.engine_hours;
+            document.getElementById("v_is_new").value = "false";
+
+            addJobLine();
+        }
+
+        function startNewVehicle() {
+            document.getElementById("step1").style.display = "none";
+            document.getElementById("step2").style.display = "flex";
+
+            document
+                .getElementById("existingVehicleInfo")
+                .classList.add("hidden");
+            document
+                .getElementById("newVehicleForm")
+                .classList.remove("hidden");
+
+            document.getElementById("v_is_new").value = "true";
+            document.getElementById("v_miles").value = "";
+            document.getElementById("v_hours").value = "";
+
+            addJobLine();
+        }
+
+        async function decodeNewVin() {
+            const vinInput = document.getElementById("new_vin");
+            const vin = vinInput.value.trim();
+            const errorMsg = document.getElementById("vinError");
+
+            if (vin.length < 10) {
+                alert("VIN is too short to decode.");
+                return;
             }
 
-            function selectVehicle(v) {
-                document.getElementById("step1").style.display = "none";
-                document.getElementById("step2").style.display = "flex";
-
-                document
-                    .getElementById("existingVehicleInfo")
-                    .classList.remove("hidden");
-                document
-                    .getElementById("newVehicleForm")
-                    .classList.add("hidden");
-
-                document.getElementById("txt_unit").innerText = v.unit_number;
-                document.getElementById("txt_vin").innerText = v.vin;
-                document.getElementById("txt_desc").innerText =
-                    `${v.year} ${v.make} ${v.model}`;
-                document.getElementById("txt_engine").innerText =
-                    v.engine_type || "N/A";
-
-                document.getElementById("v_id").value = v.id;
-                document.getElementById("v_miles").value = v.mileage;
-                document.getElementById("v_hours").value = v.engine_hours;
-                document.getElementById("v_is_new").value = "false";
-
-                addJobLine();
+            if (!isValidVin(vin)) {
+                errorMsg.classList.remove("hidden");
+                vinInput.classList.add("border-red-500", "text-red-400");
+                return;
+            } else {
+                errorMsg.classList.add("hidden");
+                vinInput.classList.remove("border-red-500", "text-red-400");
             }
 
-            function startNewVehicle() {
-                document.getElementById("step1").style.display = "none";
-                document.getElementById("step2").style.display = "flex";
+            const btn = document.querySelector(
+                'button[onclick="decodeNewVin()"]',
+            );
+            const originalText = btn.innerText;
+            btn.innerText = "...";
 
-                document
-                    .getElementById("existingVehicleInfo")
-                    .classList.add("hidden");
-                document
-                    .getElementById("newVehicleForm")
-                    .classList.remove("hidden");
+            try {
+                const res = await fetch("/api/decode/" + vin);
+                const data = await res.json();
 
-                document.getElementById("v_is_new").value = "true";
-                document.getElementById("v_miles").value = "";
-                document.getElementById("v_hours").value = "";
-
-                addJobLine();
+                if (data.year)
+                    document.getElementById("new_year").value = data.year;
+                if (data.make)
+                    document.getElementById("new_make").value = data.make;
+                if (data.model)
+                    document.getElementById("new_model").value = data.model;
+                if (data.engine)
+                    document.getElementById("new_engine").value =
+                        data.engine;
+            } catch (e) {
+                alert("Could not decode VIN.");
             }
 
-            async function decodeNewVin() {
-                const vinInput = document.getElementById("new_vin");
-                const vin = vinInput.value.trim();
-                const errorMsg = document.getElementById("vinError");
+            btn.innerText = originalText;
+        }
 
-                if (vin.length < 10) {
-                    alert("VIN is too short to decode.");
-                    return;
-                }
-
+        function validateForm() {
+            if (document.getElementById("v_is_new").value === "true") {
+                const vin = document.getElementById("new_vin").value;
                 if (!isValidVin(vin)) {
-                    errorMsg.classList.remove("hidden");
-                    vinInput.classList.add("border-red-500", "text-red-400");
-                    return;
-                } else {
-                    errorMsg.classList.add("hidden");
-                    vinInput.classList.remove("border-red-500", "text-red-400");
+                    alert(
+                        "Cannot create vehicle: VIN contains invalid characters (I, O, or Q).",
+                    );
+                    return false;
                 }
-
-                const btn = document.querySelector(
-                    'button[onclick="decodeNewVin()"]',
-                );
-                const originalText = btn.innerText;
-                btn.innerText = "...";
-
-                try {
-                    const res = await fetch("/api/decode/" + vin);
-                    const data = await res.json();
-
-                    if (data.year)
-                        document.getElementById("new_year").value = data.year;
-                    if (data.make)
-                        document.getElementById("new_make").value = data.make;
-                    if (data.model)
-                        document.getElementById("new_model").value = data.model;
-                    if (data.engine)
-                        document.getElementById("new_engine").value =
-                            data.engine;
-                } catch (e) {
-                    alert("Could not decode VIN.");
-                }
-
-                btn.innerText = originalText;
             }
+            return true;
+        }
 
-            function validateForm() {
-                if (document.getElementById("v_is_new").value === "true") {
-                    const vin = document.getElementById("new_vin").value;
-                    if (!isValidVin(vin)) {
-                        alert(
-                            "Cannot create vehicle: VIN contains invalid characters (I, O, or Q).",
-                        );
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            function addJobLine() {
-                const container = document.getElementById("jobLinesContainer");
-                const idx = container.children.length;
-                const html = `
+        function addJobLine() {
+            const container = document.getElementById("jobLinesContainer");
+            const idx = container.children.length;
+            const html = `
                 <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 relative">
                     <input type="text" name="lines_title[]" maxlength="50" placeholder="Job Title (Max 50 chars)" required
                            class="w-full bg-transparent border-b border-gray-600 pb-1 text-sm font-bold focus:border-blue-500 outline-none mb-2">
@@ -589,8 +461,18 @@
                     ${idx > 0 ? `<button type="button" onclick="this.parentElement.remove()" class="absolute top-2 right-2 text-red-500 font-bold text-xs">✕</button>` : ""}
                 </div>
             `;
-                container.insertAdjacentHTML("beforeend", html);
-            }
-        </script>
-    </body>
+            container.insertAdjacentHTML("beforeend", html);
+        }
+
+        function toggleMenu(event) {
+            event.stopPropagation();
+            document.getElementById("navMenu").classList.toggle("hidden");
+        }
+        function closeMenu(event) {
+            const menu = document.getElementById("navMenu");
+            if (menu) menu.classList.add("hidden");
+        }
+    </script>
+</body>
+
 </html>

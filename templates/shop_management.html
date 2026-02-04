@@ -1,608 +1,455 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>Shop Management</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            input::-webkit-outer-spin-button,
-            input::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-            input[type="number"] {
-                -moz-appearance: textfield;
-            }
-            dialog::backdrop {
-                background: rgba(0, 0, 0, 0.8);
-                backdrop-filter: blur(4px);
-            }
-        </style>
-    </head>
-    <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col">
-        <header
-            class="bg-gray-900 border-b border-gray-800 px-8 py-4 sticky top-0 z-20 flex justify-between items-center shadow-lg"
-        >
-            <div>
-                <h1
-                    class="text-xl font-black italic text-purple-500 tracking-wider"
-                >
-                    SHOP<span class="text-white">MANAGER</span>
-                </h1>
-                <p
-                    class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
-                >
-                    Admin Configuration
-                </p>
-            </div>
-            <a
-                href="/"
-                class="text-[10px] font-bold text-gray-500 hover:text-white uppercase tracking-wide border border-gray-700 px-3 py-1 rounded"
-                >← Back to Dashboard</a
-            >
-        </header>
 
-        <main class="max-w-6xl mx-auto w-full p-8 space-y-12">
-            <section>
+<head>
+    <meta charset="UTF-8" />
+    <title>Shop Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col" onclick="closeMenu(event)">
+    <header
+        class="bg-gray-900 border-b border-gray-800 px-8 py-4 sticky top-0 z-20 flex justify-between items-center shadow-lg">
+        <div>
+            <h1 class="text-xl font-black italic text-purple-500 tracking-wider">
+                SHOP<span class="text-white">MANAGER</span>
+            </h1>
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                Admin Configuration
+            </p>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="/"
+                class="text-[10px] font-bold text-gray-500 hover:text-white uppercase tracking-wide border border-gray-700 px-3 py-1 rounded">←
+                Back to Dashboard</a>
+            <div class="relative">
+                <button onclick="toggleMenu(event)"
+                    class="bg-gray-800 text-gray-400 p-2 rounded border border-gray-700 hover:text-white hover:border-gray-500 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <div id="navMenu"
+                    class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 overflow-hidden z-50">
+                    <div class="py-1">
+                        <a href="/customers" onclick="event.stopPropagation()"
+                            class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50">🏢
+                            Customers</a>
+                        <a href="/shop-management" onclick="event.stopPropagation()"
+                            class="block px-4 py-3 text-sm text-gray-300 hover:bg-gray-700 hover:text-white border-b border-gray-700/50">⚙️
+                            Admin Panel</a>
+                        <a href="/logout" onclick="event.stopPropagation()"
+                            class="block px-4 py-3 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 font-bold">🚪
+                            Log Out</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto w-full p-8 space-y-12">
+        <section>
+            <div class="flex justify-between items-end mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-widest">
+                    Shop Details
+                </h2>
+            </div>
+
+            <form action="/update-shop-settings" method="post"
+                class="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-2xl grid grid-cols-2 gap-6">
+                {% if user.role != 'admin' %}
                 <div
-                    class="flex justify-between items-end mb-4 border-b border-gray-800 pb-2"
-                >
-                    <h2
-                        class="text-sm font-bold text-gray-400 uppercase tracking-widest"
-                    >
-                        Shop Details
-                    </h2>
+                    class="col-span-2 bg-red-900/20 border border-red-900/50 p-3 rounded text-red-400 text-xs font-bold uppercase text-center">
+                    Read Only Mode
+                </div>
+                {% endif %}
+
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Shop Name</label>
+                    <input type="text" name="name" value="{{ shop.name }}"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-3 text-sm focus:border-purple-500 outline-none transition font-bold disabled:opacity-50"
+                        {% if user.role !="admin" %}disabled{% endif %} />
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Address</label>
+                    <textarea name="address" rows="2"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-3 text-sm focus:border-purple-500 outline-none transition disabled:opacity-50"
+                        {% if user.role !="admin" %}disabled{% endif %}>
+{{ shop.address }}</textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Phone</label>
+                    <input type="text" name="phone" value="{{ shop.phone }}"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-3 text-sm focus:border-purple-500 outline-none transition disabled:opacity-50"
+                        {% if user.role !="admin" %}disabled{% endif %} />
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-green-500 mb-1">Labor Rate ($/Hr)</label>
+                    <input type="number" step="0.01" name="rate" value="{{ shop.labor_rate }}"
+                        class="w-full bg-gray-800 rounded-lg border border-green-900/50 px-3 py-3 text-sm text-green-400 font-mono font-bold focus:border-green-500 outline-none transition disabled:opacity-50"
+                        {% if user.role !="admin" %}disabled{% endif %} />
                 </div>
 
-                <form
-                    action="/update-shop-settings"
-                    method="post"
-                    class="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-2xl grid grid-cols-2 gap-6"
-                >
-                    {% if user.role != 'admin' %}
-                    <div
-                        class="col-span-2 bg-red-900/20 border border-red-900/50 p-3 rounded text-red-400 text-xs font-bold uppercase text-center"
-                    >
-                        Read Only Mode
-                    </div>
-                    {% endif %}
-
-                    <div class="col-span-2">
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            >Shop Name</label
-                        >
-                        <input
-                            type="text"
-                            name="name"
-                            value="{{ shop.name }}"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-3 text-sm focus:border-purple-500 outline-none transition font-bold disabled:opacity-50"
-                            {%
-                            if
-                            user.role
-                            !="admin"
-                            %}disabled{%
-                            endif
-                            %}
-                        />
-                    </div>
-                    <div class="col-span-2">
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            >Address</label
-                        >
-                        <textarea
-                            name="address"
-                            rows="2"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-3 text-sm focus:border-purple-500 outline-none transition disabled:opacity-50"
-                            {%
-                            if
-                            user.role
-                            !="admin"
-                            %}disabled{%
-                            endif
-                            %}
-                        >
-{{ shop.address }}</textarea
-                        >
-                    </div>
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            >Phone</label
-                        >
-                        <input
-                            type="text"
-                            name="phone"
-                            value="{{ shop.phone }}"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-3 text-sm focus:border-purple-500 outline-none transition disabled:opacity-50"
-                            {%
-                            if
-                            user.role
-                            !="admin"
-                            %}disabled{%
-                            endif
-                            %}
-                        />
-                    </div>
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-green-500 mb-1"
-                            >Labor Rate ($/Hr)</label
-                        >
-                        <input
-                            type="number"
-                            step="0.01"
-                            name="rate"
-                            value="{{ shop.labor_rate }}"
-                            class="w-full bg-gray-800 rounded-lg border border-green-900/50 px-3 py-3 text-sm text-green-400 font-mono font-bold focus:border-green-500 outline-none transition disabled:opacity-50"
-                            {%
-                            if
-                            user.role
-                            !="admin"
-                            %}disabled{%
-                            endif
-                            %}
-                        />
-                    </div>
-
-                    {% if user.role == 'admin' %}
-                    <div class="col-span-2 text-right">
-                        <button
-                            type="submit"
-                            class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg text-xs font-black uppercase shadow-lg transition-transform active:scale-95"
-                        >
-                            Save Details
-                        </button>
-                    </div>
-                    {% endif %}
-                </form>
-            </section>
-
-            {% if user.role == 'admin' %}
-            <section>
-                <div
-                    class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2"
-                >
-                    <h2
-                        class="text-sm font-bold text-gray-400 uppercase tracking-widest"
-                    >
-                        Active Team
-                    </h2>
-                    <button
-                        onclick="openModal('create')"
-                        class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg transition-transform active:scale-95 flex items-center gap-2"
-                    >
-                        + Add Member
+                {% if user.role == 'admin' %}
+                <div class="col-span-2 text-right">
+                    <button type="submit"
+                        class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg text-xs font-black uppercase shadow-lg transition-transform active:scale-95">
+                        Save Details
                     </button>
                 </div>
+                {% endif %}
+            </form>
+        </section>
 
-                <div
-                    class="bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden"
-                >
-                    <table class="w-full text-left text-sm">
-                        <thead
-                            class="bg-gray-800 text-[10px] uppercase text-gray-500 font-bold tracking-wider"
-                        >
-                            <tr>
-                                <th class="px-6 py-4">Emp #</th>
-                                <th class="px-6 py-4">Employee</th>
-                                <th class="px-6 py-4">Role</th>
-                                <th class="px-6 py-4">Tenure</th>
-                                <th class="px-6 py-4 text-right">Pay Rate</th>
-                                <th class="px-6 py-4 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-800">
-                            {% for u in users %}
-                            <tr
-                                class="hover:bg-gray-800/50 transition-colors group"
-                            >
-                                <td
-                                    class="px-6 py-4 font-mono text-purple-400 font-bold"
-                                >
-                                    {{ u.employee_number or '---' }}
-                                </td>
-                                <td class="px-6 py-4 font-bold text-white">
-                                    {{ u.username }}
-                                </td>
-                                <td class="px-6 py-4">
-                                    {% if u.role == 'admin' %}<span
-                                        class="px-2 py-1 rounded bg-purple-900/30 text-purple-400 border border-purple-500/30 text-[10px] font-bold uppercase"
-                                        >Manager</span
-                                    >
-                                    {% elif u.role == 'manager' %}<span
-                                        class="px-2 py-1 rounded bg-blue-900/30 text-blue-400 border border-blue-500/30 text-[10px] font-bold uppercase"
-                                        >Foreman</span
-                                    >
-                                    {% else %}<span
-                                        class="px-2 py-1 rounded bg-green-900/30 text-green-400 border border-green-500/30 text-[10px] font-bold uppercase"
-                                        >Tech</span
-                                    >{% endif %}
-                                </td>
-                                <td class="px-6 py-4 text-gray-400 text-xs">
-                                    {{ u.tenure }} Yrs
-                                </td>
-                                <td
-                                    class="px-6 py-4 text-right font-mono text-gray-300 font-bold"
-                                >
-                                    ${{ "{:.2f}".format(u.pay_rate) }}
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <button
-                                        onclick='openModal("edit", {{ u|tojson }})'
-                                        class="text-gray-500 hover:text-white font-bold text-[10px] uppercase border border-gray-700 px-2 py-1 rounded hover:bg-gray-700 transition-colors"
-                                    >
-                                        Edit
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+        {% if user.role == 'admin' %}
+        <section>
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-widest">
+                    Active Team
+                </h2>
+                <button onclick="openModal('create')"
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg transition-transform active:scale-95 flex items-center gap-2">
+                    + Add Member
+                </button>
+            </div>
 
-            <section class="opacity-75">
-                <div
-                    class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2"
-                >
-                    <h2
-                        class="text-sm font-bold text-red-400 uppercase tracking-widest"
-                    >
-                        Archived / Fired
-                    </h2>
-                </div>
-                <div
-                    class="bg-gray-900 rounded-2xl border border-gray-800 shadow-xl overflow-hidden"
-                >
-                    <table
-                        class="w-full text-left text-sm opacity-60 hover:opacity-100 transition-opacity"
-                    >
-                        <thead
-                            class="bg-gray-800 text-[10px] uppercase text-gray-500 font-bold tracking-wider"
-                        >
-                            <tr>
-                                <th class="px-6 py-4">Emp #</th>
-                                <th class="px-6 py-4">Employee</th>
-                                <th class="px-6 py-4">Role</th>
-                                <th class="px-6 py-4 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-800">
-                            {% for u in archived %}
-                            <tr class="hover:bg-red-900/10 transition-colors">
-                                <td class="px-6 py-4 font-mono text-gray-500">
-                                    {{ u.employee_number }}
-                                </td>
-                                <td class="px-6 py-4 text-gray-400">
-                                    {{ u.username }}
-                                </td>
-                                <td
-                                    class="px-6 py-4 text-xs text-gray-500 uppercase"
-                                >
-                                    {{ u.role }}
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <form
-                                        action="/reactivate-user"
-                                        method="post"
-                                        onsubmit="
+            <div class="bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-800 text-[10px] uppercase text-gray-500 font-bold tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4">Emp #</th>
+                            <th class="px-6 py-4">Employee</th>
+                            <th class="px-6 py-4">Role</th>
+                            <th class="px-6 py-4">Tenure</th>
+                            <th class="px-6 py-4 text-right">Pay Rate</th>
+                            <th class="px-6 py-4 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for u in users %}
+                        <tr class="hover:bg-gray-800/50 transition-colors group">
+                            <td class="px-6 py-4 font-mono text-purple-400 font-bold">
+                                {{ u.employee_number or '---' }}
+                            </td>
+                            <td class="px-6 py-4 font-bold text-white">
+                                {{ u.username }}
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if u.role == 'admin' %}<span
+                                    class="px-2 py-1 rounded bg-purple-900/30 text-purple-400 border border-purple-500/30 text-[10px] font-bold uppercase">Admin</span>
+                                {% elif u.role == 'foreman' %}<span
+                                    class="px-2 py-1 rounded bg-blue-900/30 text-blue-400 border border-blue-500/30 text-[10px] font-bold uppercase">Foreman</span>
+                                {% else %}<span
+                                    class="px-2 py-1 rounded bg-green-900/30 text-green-400 border border-green-500/30 text-[10px] font-bold uppercase">Tech</span>{%
+                                endif %}
+                            </td>
+                            <td class="px-6 py-4 text-gray-400 text-xs">
+                                {{ u.tenure }} Yrs
+                            </td>
+                            <td class="px-6 py-4 text-right font-mono text-gray-300 font-bold">
+                                ${{ "{:.2f}".format(u.pay_rate) }}
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                <button onclick='openModal("edit", {{ u|tojson }})'
+                                    class="text-gray-500 hover:text-white font-bold text-[10px] uppercase border border-gray-700 px-2 py-1 rounded hover:bg-gray-700 transition-colors">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="opacity-75">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
+                <h2 class="text-sm font-bold text-red-400 uppercase tracking-widest">
+                    Archived / Fired
+                </h2>
+            </div>
+            <div class="bg-gray-900 rounded-2xl border border-gray-800 shadow-xl overflow-hidden">
+                <table class="w-full text-left text-sm opacity-60 hover:opacity-100 transition-opacity">
+                    <thead class="bg-gray-800 text-[10px] uppercase text-gray-500 font-bold tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4">Emp #</th>
+                            <th class="px-6 py-4">Employee</th>
+                            <th class="px-6 py-4">Role</th>
+                            <th class="px-6 py-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        {% for u in archived %}
+                        <tr class="hover:bg-red-900/10 transition-colors">
+                            <td class="px-6 py-4 font-mono text-gray-500">
+                                {{ u.employee_number }}
+                            </td>
+                            <td class="px-6 py-4 text-gray-400">
+                                {{ u.username }}
+                            </td>
+                            <td class="px-6 py-4 text-xs text-gray-500 uppercase">
+                                {{ u.role }}
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <form action="/reactivate-user" method="post" onsubmit="
                                             return confirm(
                                                 'Re-hire this employee?',
                                             );
-                                        "
-                                    >
-                                        <input
-                                            type="hidden"
-                                            name="user_id"
-                                            value="{{ u.id }}"
-                                        />
-                                        <button
-                                            class="text-green-500 hover:text-green-400 font-bold text-[10px] uppercase border border-green-900 px-2 py-1 rounded hover:bg-green-900/30 transition-colors"
-                                        >
-                                            Re-Hire
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %} {% if not archived %}
-                            <tr class="text-center">
-                                <td
-                                    colspan="4"
-                                    class="py-4 text-xs text-gray-600 italic"
-                                >
-                                    No archived users found.
-                                </td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            {% endif %}
-        </main>
-
-        {% if user.role == 'admin' %}
-
-        <dialog
-            id="userModal"
-            class="relative rounded-2xl shadow-2xl p-0 w-full max-w-lg bg-gray-900 text-white border border-gray-700"
-        >
-            <button
-                onclick="closeModal()"
-                class="absolute top-4 right-4 text-gray-500 hover:text-white font-bold text-xl z-50"
-            >
-                &times;
-            </button>
-            <div class="border-b border-gray-800 px-6 py-4 bg-gray-800/50">
-                <h3
-                    class="font-bold text-lg text-purple-400 italic"
-                    id="modalTitle"
-                >
-                    Add New Member
-                </h3>
-                <p class="text-[10px] text-gray-500 uppercase mt-1">
-                    ID generated automatically based on role
-                </p>
+                                        ">
+                                    <input type="hidden" name="user_id" value="{{ u.id }}" />
+                                    <button
+                                        class="text-green-500 hover:text-green-400 font-bold text-[10px] uppercase border border-green-900 px-2 py-1 rounded hover:bg-green-900/30 transition-colors">
+                                        Re-Hire
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %} {% if not archived %}
+                        <tr class="text-center">
+                            <td colspan="4" class="py-4 text-xs text-gray-600 italic">
+                                No archived users found.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
-            <form
-                id="userForm"
-                action="/create-user"
-                method="post"
-                class="p-6 space-y-5"
-            >
-                <input type="hidden" name="user_id" id="userId" />
-                <div class="grid grid-cols-2 gap-5">
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            >Username</label
-                        >
-                        <input
-                            type="text"
-                            name="username"
-                            id="inputUser"
-                            required
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition"
-                        />
-                    </div>
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            id="passLabel"
-                            >Password</label
-                        >
-                        <input
-                            type="text"
-                            name="password"
-                            id="inputPass"
-                            required
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition"
-                        />
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-5">
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            >Role</label
-                        >
-                        <select
-                            name="role"
-                            id="inputRole"
-                            onchange="toggleTechLevel()"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition"
-                        >
-                            <option value="tech">Tech (1000s)</option>
-                            <option value="manager">Foreman (2000s)</option>
-                            <option value="admin">Manager (3000s)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-green-500 mb-1"
-                            >Hourly Rate ($)</label
-                        >
-                        <input
-                            type="number"
-                            step="0.01"
-                            name="pay_rate"
-                            id="inputPay"
-                            required
-                            placeholder="0.00"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-green-500 outline-none transition font-mono text-green-400"
-                        />
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-5">
-                    <div>
-                        <label
-                            class="block text-[10px] font-bold uppercase text-blue-500 mb-1"
-                            >Hire Date</label
-                        >
-                        <input
-                            type="date"
-                            name="hire_date"
-                            id="inputHireDate"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-blue-500 outline-none transition text-gray-300"
-                        />
-                    </div>
-                    <div id="techLevelGroup">
-                        <label
-                            class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                            >Skill Level</label
-                        >
-                        <select
-                            name="tech_level"
-                            id="inputLevel"
-                            class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition"
-                        >
-                            <option value="Apprentice">Apprentice</option>
-                            <option value="Lube Tech">Lube Tech</option>
-                            <option value="Tech 1">Tech 1</option>
-                            <option value="Tech 2">Tech 2</option>
-                            <option value="Tech 3">Tech 3</option>
-                            <option value="Master Tech">Master Tech</option>
-                            <option value="Lead Tech">Lead Tech</option>
-                        </select>
-                    </div>
-                </div>
+        </section>
+        {% endif %}
+    </main>
 
-                <div class="pt-2 flex gap-3">
-                    <button
-                        type="submit"
-                        id="submitBtn"
-                        class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-lg text-xs font-black uppercase shadow-lg transition-transform active:scale-95"
-                    >
-                        Create User
-                    </button>
-                    <button
-                        type="button"
-                        id="archiveBtn"
-                        onclick="openArchiveModal()"
-                        class="hidden flex-1 bg-red-900/30 hover:bg-red-900/50 text-red-500 border border-red-900/50 py-2.5 rounded-lg text-xs font-black uppercase transition-colors"
-                    >
-                        Archive User
-                    </button>
-                </div>
-            </form>
-        </dialog>
+    {% if user.role == 'admin' %}
 
-        <dialog
-            id="archiveModal"
-            class="relative rounded-2xl shadow-2xl p-6 w-full max-w-sm bg-gray-900 text-white border border-red-900/50"
-        >
-            <h3 class="text-lg font-bold text-red-500 uppercase mb-4">
-                Archive Employee
+    <dialog id="userModal"
+        class="relative rounded-2xl shadow-2xl p-0 w-full max-w-lg bg-gray-900 text-white border border-gray-700">
+        <button onclick="closeModal()"
+            class="absolute top-4 right-4 text-gray-500 hover:text-white font-bold text-xl z-50">
+            &times;
+        </button>
+        <div class="border-b border-gray-800 px-6 py-4 bg-gray-800/50">
+            <h3 class="font-bold text-lg text-purple-400 italic" id="modalTitle">
+                Add New Member
             </h3>
-            <form action="/archive-user" method="post" class="space-y-4">
-                <input type="hidden" name="user_id" id="archiveId" />
+            <p class="text-[10px] text-gray-500 uppercase mt-1">
+                ID generated automatically based on role
+            </p>
+        </div>
+        <form id="userForm" action="/create-user" method="post" class="p-6 space-y-5">
+            <input type="hidden" name="user_id" id="userId" />
+            <div class="grid grid-cols-2 gap-5">
                 <div>
-                    <label
-                        class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
-                        >Reason for Archiving</label
-                    >
-                    <select
-                        name="reason"
-                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-red-500 outline-none"
-                    >
-                        <option value="Fired">Fired</option>
-                        <option value="Quit">Quit / Resigned</option>
-                        <option value="Laid Off">Laid Off</option>
-                        <option value="Retired">Retired</option>
-                        <option value="Deceased">Deceased</option>
-                        <option value="Other">Other</option>
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Username</label>
+                    <input type="text" name="username" id="inputUser" required
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition" />
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1"
+                        id="passLabel">Password</label>
+                    <input type="text" name="password" id="inputPass" required
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition" />
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Role</label>
+                    <select name="role" id="inputRole" onchange="toggleTechLevel()"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition">
+                        <option value="tech">Tech (1000s)</option>
+                        <option value="foreman">Foreman (2000s)</option>
+                        <option value="admin">Admin (3000s)</option>
                     </select>
                 </div>
-                <div class="flex gap-3">
-                    <button
-                        type="submit"
-                        class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-xs font-bold uppercase"
-                    >
-                        Confirm
-                    </button>
-                    <button
-                        type="button"
-                        onclick="
-                            document.getElementById('archiveModal').close()
-                        "
-                        class="flex-1 bg-gray-800 text-gray-400 py-2 rounded-lg text-xs font-bold uppercase"
-                    >
-                        Cancel
-                    </button>
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-green-500 mb-1">Hourly Rate ($)</label>
+                    <input type="number" step="0.01" name="pay_rate" id="inputPay" required placeholder="0.00"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-green-500 outline-none transition font-mono text-green-400" />
                 </div>
-            </form>
-        </dialog>
+            </div>
+            <div class="grid grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase text-blue-500 mb-1">Hire Date</label>
+                    <input type="date" name="hire_date" id="inputHireDate"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-blue-500 outline-none transition text-gray-300" />
+                </div>
+                <div id="techLevelGroup">
+                    <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Skill Level</label>
+                    <select name="tech_level" id="inputLevel"
+                        class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-purple-500 outline-none transition">
+                        <option value="Apprentice">Apprentice</option>
+                        <option value="Lube Tech">Lube Tech</option>
+                        <option value="Tech 1">Tech 1</option>
+                        <option value="Tech 2">Tech 2</option>
+                        <option value="Tech 3">Tech 3</option>
+                        <option value="Master Tech">Master Tech</option>
+                        <option value="Lead Tech">Lead Tech</option>
+                    </select>
+                </div>
+            </div>
 
-        <script>
-            const modal = document.getElementById("userModal");
-            const archiveModal = document.getElementById("archiveModal");
+            <div class="pt-2 flex gap-3">
+                <button type="submit" id="submitBtn"
+                    class="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-lg text-xs font-black uppercase shadow-lg transition-transform active:scale-95">
+                    Create User
+                </button>
+                <button type="button" id="archiveBtn" onclick="openArchiveModal()"
+                    class="hidden flex-1 bg-red-900/30 hover:bg-red-900/50 text-red-500 border border-red-900/50 py-2.5 rounded-lg text-xs font-black uppercase transition-colors">
+                    Archive User
+                </button>
+            </div>
+        </form>
+    </dialog>
 
-            function openModal(mode, user = null) {
-                modal.showModal();
-                if (mode === "edit" && user) {
-                    document.getElementById("modalTitle").innerText =
-                        "Edit " + user.username;
-                    document.getElementById("submitBtn").innerText =
-                        "Save Changes";
-                    document.getElementById("userForm").action = "/update-user";
+    <dialog id="archiveModal"
+        class="relative rounded-2xl shadow-2xl p-6 w-full max-w-sm bg-gray-900 text-white border border-red-900/50">
+        <h3 class="text-lg font-bold text-red-500 uppercase mb-4">
+            Archive Employee
+        </h3>
+        <form action="/archive-user" method="post" class="space-y-4">
+            <input type="hidden" name="user_id" id="archiveId" />
+            <div>
+                <label class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Reason for Archiving</label>
+                <select name="reason"
+                    class="w-full bg-gray-800 rounded-lg border border-gray-700 px-3 py-2 text-sm focus:border-red-500 outline-none">
+                    <option value="Fired">Fired</option>
+                    <option value="Quit">Quit / Resigned</option>
+                    <option value="Laid Off">Laid Off</option>
+                    <option value="Retired">Retired</option>
+                    <option value="Deceased">Deceased</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit"
+                    class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded-lg text-xs font-bold uppercase">
+                    Confirm
+                </button>
+                <button type="button" onclick="
+                            document.getElementById('archiveModal').close()
+                        " class="flex-1 bg-gray-800 text-gray-400 py-2 rounded-lg text-xs font-bold uppercase">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </dialog>
 
-                    document.getElementById("userId").value = user.id;
-                    document.getElementById("archiveId").value = user.id;
+    <script>
+        const modal = document.getElementById("userModal");
+        const archiveModal = document.getElementById("archiveModal");
 
-                    document.getElementById("inputUser").value = user.username;
-                    document.getElementById("inputUser").readOnly = true;
-                    document
-                        .getElementById("inputUser")
-                        .classList.add("opacity-50", "cursor-not-allowed");
+        function openModal(mode, user = null) {
+            modal.showModal();
+            if (mode === "edit" && user) {
+                document.getElementById("modalTitle").innerText =
+                    "Edit " + user.username;
+                document.getElementById("submitBtn").innerText =
+                    "Save Changes";
+                document.getElementById("userForm").action = "/update-user";
 
-                    document.getElementById("inputPass").value = "";
-                    document.getElementById("inputPass").required = false;
-                    document.getElementById("inputPass").placeholder =
-                        "(Unchanged)";
-                    document.getElementById("passLabel").innerText =
-                        "New Password (Optional)";
+                document.getElementById("userId").value = user.id;
+                document.getElementById("archiveId").value = user.id;
 
-                    document.getElementById("inputRole").value = user.role;
-                    document.getElementById("inputPay").value = user.pay_rate;
-                    document.getElementById("inputHireDate").value =
-                        user.hire_date || "";
+                document.getElementById("inputUser").value = user.username;
+                document.getElementById("inputUser").readOnly = true;
+                document
+                    .getElementById("inputUser")
+                    .classList.add("opacity-50", "cursor-not-allowed");
 
-                    if (user.tech_level)
-                        document.getElementById("inputLevel").value =
-                            user.tech_level;
+                document.getElementById("inputPass").value = "";
+                document.getElementById("inputPass").required = false;
+                document.getElementById("inputPass").placeholder =
+                    "(Unchanged)";
+                document.getElementById("passLabel").innerText =
+                    "New Password (Optional)";
 
-                    document
-                        .getElementById("archiveBtn")
-                        .classList.remove("hidden");
-                } else {
-                    document.getElementById("modalTitle").innerText =
-                        "Add New Member";
-                    document.getElementById("submitBtn").innerText =
-                        "Create User";
-                    document.getElementById("userForm").action = "/create-user";
-                    document.getElementById("userForm").reset();
+                document.getElementById("inputRole").value = user.role;
+                document.getElementById("inputPay").value = user.pay_rate;
+                document.getElementById("inputHireDate").value =
+                    user.hire_date || "";
 
-                    document.getElementById("userId").value = "";
-                    document.getElementById("inputUser").readOnly = false;
-                    document
-                        .getElementById("inputUser")
-                        .classList.remove("opacity-50", "cursor-not-allowed");
+                if (user.tech_level)
+                    document.getElementById("inputLevel").value =
+                        user.tech_level;
 
-                    document.getElementById("inputPass").required = true;
-                    document.getElementById("inputPass").placeholder = "";
-                    document.getElementById("passLabel").innerText = "Password";
+                document
+                    .getElementById("archiveBtn")
+                    .classList.remove("hidden");
+            } else {
+                document.getElementById("modalTitle").innerText =
+                    "Add New Member";
+                document.getElementById("submitBtn").innerText =
+                    "Create User";
+                document.getElementById("userForm").action = "/create-user";
+                document.getElementById("userForm").reset();
 
-                    document
-                        .getElementById("archiveBtn")
-                        .classList.add("hidden");
-                }
-                toggleTechLevel();
+                document.getElementById("userId").value = "";
+                document.getElementById("inputUser").readOnly = false;
+                document
+                    .getElementById("inputUser")
+                    .classList.remove("opacity-50", "cursor-not-allowed");
+
+                document.getElementById("inputPass").required = true;
+                document.getElementById("inputPass").placeholder = "";
+                document.getElementById("passLabel").innerText = "Password";
+
+                document
+                    .getElementById("archiveBtn")
+                    .classList.add("hidden");
             }
+            toggleTechLevel();
+        }
 
-            function openArchiveModal() {
-                modal.close();
-                archiveModal.showModal();
-            }
+        function openArchiveModal() {
+            modal.close();
+            archiveModal.showModal();
+        }
 
-            function closeModal() {
-                modal.close();
-            }
+        function closeModal() {
+            modal.close();
+        }
 
-            function toggleTechLevel() {
-                const role = document.getElementById("inputRole").value;
-                document.getElementById("techLevelGroup").style.display =
-                    role === "tech" ? "block" : "none";
-            }
+        function toggleTechLevel() {
+            const role = document.getElementById("inputRole").value;
+            document.getElementById("techLevelGroup").style.display =
+                role === "tech" ? "block" : "none";
+        }
 
-            modal.addEventListener("click", (e) => {
-                if (e.target === modal) modal.close();
-            });
-            archiveModal.addEventListener("click", (e) => {
-                if (e.target === archiveModal) archiveModal.close();
-            });
-        </script>
-        {% endif %}
-    </body>
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) modal.close();
+        });
+        archiveModal.addEventListener("click", (e) => {
+            if (e.target === archiveModal) archiveModal.close();
+        });
+    </script>
+    {% endif %}
+
+    <script>
+        function toggleMenu(event) {
+            event.stopPropagation();
+            document.getElementById("navMenu").classList.toggle("hidden");
+        }
+        function closeMenu(event) {
+            const menu = document.getElementById("navMenu");
+            if (menu) menu.classList.add("hidden");
+        }
+    </script>
+</body>
+
 </html>
